@@ -27,7 +27,7 @@ dependencies:
   amplify_flutter: '<1.0.0'
   amplify_auth_cognito: '<1.0.0'
   amplify_storage_s3: '<1.0.0'
-  amplify_datastore: '<1.0.0'
+  # amplify_datastore: '<1.0.0'
   file_picker: ^2.1.7
   flutter_bloc: ^6.1.2
 
