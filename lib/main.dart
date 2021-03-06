@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:ffi';
 import 'package:flutter/material.dart';
 // Amplify Flutter Packages
 import 'package:amplify_flutter/amplify.dart';
@@ -8,6 +10,11 @@ import 'amplifyconfiguration.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
+
+// Constant
+final sqiApiBaseUrl =
+    "https://bln9cf30wj.execute-api.ap-southeast-1.amazonaws.com/default/pythontest?filename=s3://flutteramplify32917a364a1942d5b5203a9c772381ec102628-dev/public/";
 
 void main() {
   runApp(MyApp());
@@ -156,28 +163,6 @@ class _TodoViewState extends State<TodoView> {
     );
   }
 
-  Widget _detailFileView(StorageItem item) {
-    return Column(
-      children: [
-        FutureBuilder<String>(
-          future: BlocProvider.of<UploadCubit>(context).downloadFile(item),
-          builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-            if (snapshot.hasData) {
-              return Image.network(snapshot.data);
-            } else {
-              return Text("ERROR");
-            }
-          },
-        ),
-        ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text("Back"))
-      ],
-    );
-  }
-
   Widget _getFileIcon(String name) {
     String extension = '.' + name.split(".").last;
 
@@ -218,15 +203,6 @@ class ListingView extends StatelessWidget {
 
 // Data Repository
 class DataRepository {
-  Future<GetUrlResult> downloadFile(StorageItem item) async {
-    try {
-      GetUrlResult result = await Amplify.Storage.getUrl(key: item.key);
-      return result;
-    } on StorageException catch (e) {
-      print(e.message);
-    }
-  }
-
   void uploadFile() async {
     Map<String, String> metadata = <String, String>{};
     metadata['name'] = 'rawecg.csv';
@@ -260,6 +236,7 @@ class DataRepository {
       return items;
     } on StorageException catch (e) {
       print(e.message);
+      return null;
     }
   }
 }
@@ -297,11 +274,6 @@ class UploadCubit extends Cubit<UploadState> {
     await _dataRepository.uploadFile();
     listFiles();
   }
-
-  Future<String> downloadFile(StorageItem item) async {
-    final GetUrlResult result = await _dataRepository.downloadFile(item);
-    return result.url;
-  }
 }
 
 // CTGDetailView
@@ -322,6 +294,12 @@ class CTGDetailView extends StatelessWidget {
             child: Text("Invalid Image File"),
           ),
         );
+      } else if (state is ComputedSQISuccess) {
+        return Container(
+          child: Center(
+            child: Text(state.sqi.summary),
+          ),
+        );
       } else if (state is LoadedCTGSuccess) {
         return Container(
           child: Center(
@@ -339,6 +317,104 @@ class CTGDetailView extends StatelessWidget {
   }
 }
 
+//  Parser
+class SQI {
+  final int pass;
+  final String recordname;
+  final double mSQICh1;
+  final double mSQICh2;
+  final double mSQICh3;
+  final double mSQICh4;
+  final double fSQICh1;
+  final double fSQICh2;
+  final double fSQICh3;
+  final double fSQICh4;
+  final int invertCh1;
+  final int invertCh2;
+  final int invertCh3;
+  final int invertCh4;
+  final String summary;
+
+  SQI(
+      {this.pass,
+      this.recordname,
+      this.mSQICh1,
+      this.mSQICh2,
+      this.mSQICh3,
+      this.mSQICh4,
+      this.fSQICh1,
+      this.fSQICh2,
+      this.fSQICh3,
+      this.fSQICh4,
+      this.invertCh1,
+      this.invertCh2,
+      this.invertCh3,
+      this.invertCh4,
+      this.summary});
+
+  factory SQI.fromJson(Map<String, dynamic> json) {
+    final recordname = json['recordname'];
+    final summary = "recordname: " +
+        json['recordname'] +
+        "\n" +
+        "pass: " +
+        (json['pass'] as int).toString() +
+        "\n" +
+        "mSQICh1: " +
+        (json['mSQI_ch1'] as double).toStringAsFixed(3) +
+        "\n" +
+        "mSQICh2: " +
+        (json['mSQI_ch2'] as double).toStringAsFixed(3) +
+        "\n" +
+        "mSQICh3: " +
+        (json['mSQI_ch3'] as double).toStringAsFixed(3) +
+        "\n" +
+        "mSQICh4: " +
+        (json['mSQI_ch4'] as double).toStringAsFixed(3) +
+        "\n" +
+        "fSQICh1: " +
+        (json['fSQI_ch1'] as double).toStringAsFixed(3) +
+        "\n" +
+        "fSQICh1: " +
+        (json['fSQI_ch2'] as double).toStringAsFixed(3) +
+        "\n" +
+        "fSQICh2: " +
+        (json['fSQI_ch3'] as double).toStringAsFixed(3) +
+        "\n" +
+        "fSQICh3: " +
+        (json['fSQI_ch4'] as double).toStringAsFixed(3) +
+        "\n" +
+        "invertedCh1: " +
+        (json["Inverted_ch1"] as int).toString() +
+        "\n" +
+        "invertedCh2: " +
+        (json["Inverted_ch2"] as int).toString() +
+        "\n" +
+        "invertedCh3: " +
+        (json["Inverted_ch3"] as int).toString() +
+        "\n" +
+        "invertedCh4: " +
+        (json["Inverted_ch4"] as int).toString();
+
+    return SQI(
+        pass: json['pass'],
+        recordname: recordname,
+        mSQICh1: json['mSQI_ch1'],
+        mSQICh2: json['mSQI_ch2'],
+        mSQICh3: json['mSQI_ch3'],
+        mSQICh4: json['mSQI_ch4'],
+        fSQICh1: json['fSQI_ch1'],
+        fSQICh2: json['fSQI_ch2'],
+        fSQICh3: json['fSQI_ch3'],
+        fSQICh4: json['fSQI_ch4'],
+        invertCh1: json['Inverted_ch1'],
+        invertCh2: json['Inverted_ch2'],
+        invertCh3: json['Inverted_ch3'],
+        invertCh4: json['Inverted_ch4'],
+        summary: summary);
+  }
+}
+
 // CTG Repository
 class CTGRepository {
   Future<GetUrlResult> getCTG(StorageItem item) async {
@@ -347,7 +423,15 @@ class CTGRepository {
       return url;
     } on StorageException catch (e) {
       print(e.message);
+      return null;
     }
+  }
+
+  Future<SQI> computeSQI(StorageItem item) async {
+    final url = sqiApiBaseUrl + item.key.toString();
+    final response = await http.get(url);
+    final json = jsonDecode(response.body);
+    return SQI.fromJson(json);
   }
 }
 
@@ -361,6 +445,11 @@ class LoadedCTGSuccess extends CTGAPIState {
   LoadedCTGSuccess({this.url});
 }
 
+class ComputedSQISuccess extends CTGAPIState {
+  SQI sqi;
+  ComputedSQISuccess({this.sqi});
+}
+
 class LoadedCTGFailure extends CTGAPIState {}
 
 class CTGCubit extends Cubit<CTGAPIState> {
@@ -368,9 +457,12 @@ class CTGCubit extends Cubit<CTGAPIState> {
   CTGCubit() : super(LoadingCTG());
 
   void getCTG(StorageItem item) async {
-    // Is item an image
+    // Call sqiApi if data.csv
     String extension = '.' + item.key.toString().split(".").last;
-    if ('.jpg, .jpeg, .png'.contains(extension)) {
+    if ('.csv'.contains(extension)) {
+      final sqi = await _ctgRepository.computeSQI(item);
+      emit(ComputedSQISuccess(sqi: sqi));
+    } else if ('.jpg, .jpeg, .png'.contains(extension)) {
       final url = await _ctgRepository.getCTG(item);
       emit(LoadedCTGSuccess(url: url));
     } else {
