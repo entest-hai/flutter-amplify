@@ -43,7 +43,7 @@ class _MyAppState extends State<MyApp> {
       BlocProvider(
         create: (context) => CTGCubit(),
       )
-    ], child: _amplifyConfigured ? CTGNav() : ListingView()));
+    ], child: _amplifyConfigured ? CTGNavTab() : CTGNavTab()));
   }
 
   void _configureAmplify() async {
@@ -57,6 +57,185 @@ class _MyAppState extends State<MyApp> {
     } catch (e) {
       print(e.toString());
     }
+  }
+}
+
+class CTGNavTab extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() {
+    // TODO: implement createState
+    return _CTGNavTabState();
+  }
+}
+
+class _CTGNavTabState extends State<CTGNavTab> {
+  int _currentIndex = 0;
+  final tabs = [
+    Center(
+      child: SQIAppView(),
+    ),
+    Center(
+      child: Text("SQI"),
+    ),
+    Center(
+      child: Text("Profile"),
+    ),
+    Center(
+      child: Text("Setting"),
+    ),
+  ];
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return Navigator(
+      pages: [
+        MaterialPage(
+            child: Scaffold(
+          appBar: AppBar(title: Text("Amplify")),
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            currentIndex: _currentIndex,
+            items: [
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.home),
+                  label: "CTG",
+                  backgroundColor: Colors.blue),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.camera),
+                  label: "SQI",
+                  backgroundColor: Colors.blue),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.person),
+                  label: "Profile",
+                  backgroundColor: Colors.blue),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.settings),
+                  label: "Setting",
+                  backgroundColor: Colors.blue)
+            ],
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+          ),
+          body: tabs[_currentIndex],
+        ))
+      ],
+      onPopPage: (route, result) {
+        return route.didPop(result);
+      },
+    );
+  }
+}
+
+class SQIAppView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return BlocBuilder<UploadCubit, UploadState>(
+      builder: (context, state) {
+        if (state is ListFilesSuccess) {
+          return state.files.isEmpty
+              ? _emptyView()
+              : Column(
+                  children: [
+                    Expanded(child: _listFileView(state)),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: IconButton(
+                          icon: Icon(
+                            Icons.cloud_upload,
+                            size: 50,
+                          ),
+                          onPressed: () {
+                            BlocProvider.of<UploadCubit>(context).uploadFile();
+                          }),
+                    ),
+                  ],
+                );
+        } else if (state is ListFilesFailure) {
+          return _exceptionView();
+        } else {
+          return ListingView();
+        }
+      },
+    );
+  }
+
+  ListView _listFileView(ListFilesSuccess state) {
+    return ListView.builder(
+      itemCount: state.files.length,
+      itemBuilder: (context, index) {
+        return Card(
+          child: InkWell(
+            onTap: () => {
+              BlocProvider.of<CTGCubit>(context).getCTG(state.files[index]),
+              showModalBottomSheet(
+                  context: context,
+                  builder: (context) {
+                    return CTGDetailView();
+                  }).whenComplete(() {
+                BlocProvider.of<CTGCubit>(context).popToDataList();
+              })
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Row(
+                    children: [
+                      _getFileIcon(state.files[index].key.toString()),
+                      Expanded(
+                          child: Padding(
+                        padding: const EdgeInsets.all(10.0),
+                        child: Text(state.files[index].key.toString()),
+                      ))
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Row(
+                    children: [
+                      IconButton(
+                          icon: Icon(Icons.cloud_download), onPressed: () {}),
+                      IconButton(icon: Icon(Icons.delete), onPressed: () {})
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _getFileIcon(String name) {
+    String extension = '.' + name.split(".").last;
+
+    if ('.jpg, .jpeg, .png'.contains(extension)) {
+      return Icon(
+        Icons.image,
+        color: Colors.blue,
+      );
+    }
+    return Icon(Icons.archive);
+  }
+
+  Widget _emptyView() {
+    return Center(
+      child: Text("Not File Yet"),
+    );
+  }
+
+  Widget _exceptionView() {
+    return Center(
+      child: Text("Exception"),
+    );
   }
 }
 
