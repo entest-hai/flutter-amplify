@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ffi';
 import 'package:flutter/material.dart';
 // Amplify Flutter Packages
 import 'package:amplify_flutter/amplify.dart';
@@ -11,6 +10,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'ctg.dart';
+import 's3.dart';
 
 // Constant
 final sqiApiBaseUrl =
@@ -42,7 +43,11 @@ class _MyAppState extends State<MyApp> {
       BlocProvider(create: (context) => UploadCubit()..listFiles()),
       BlocProvider(
         create: (context) => CTGCubit(),
-      )
+      ),
+      BlocProvider(
+        create: (context) => HeartRateCubit()..loadHeartRateFromFile(),
+      ),
+      BlocProvider(create: (context) => S3Cubit()..listCsvFiles()),
     ], child: _amplifyConfigured ? CTGNavTab() : CTGNavTab()));
   }
 
@@ -75,7 +80,7 @@ class _CTGNavTabState extends State<CTGNavTab> {
       child: SQIAppView(),
     ),
     Center(
-      child: Text("SQI"),
+      child: CTGAppOnly(),
     ),
     Center(
       child: Text("Profile"),
@@ -99,11 +104,11 @@ class _CTGNavTabState extends State<CTGNavTab> {
             items: [
               BottomNavigationBarItem(
                   icon: Icon(Icons.home),
-                  label: "CTG",
+                  label: "SQI",
                   backgroundColor: Colors.blue),
               BottomNavigationBarItem(
                   icon: Icon(Icons.camera),
-                  label: "SQI",
+                  label: "CTG",
                   backgroundColor: Colors.blue),
               BottomNavigationBarItem(
                   icon: Icon(Icons.person),
@@ -145,6 +150,7 @@ class SQIAppView extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: IconButton(
+                          color: Colors.blue,
                           icon: Icon(
                             Icons.cloud_upload,
                             size: 50,
