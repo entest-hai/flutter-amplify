@@ -1,9 +1,15 @@
 import 'dart:async';
+import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 's3.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+final heartRateApiBaseUrl =
+    "https://bln9cf30wj.execute-api.ap-southeast-1.amazonaws.com/default/femomfhr?filename=s3://flutteramplify32917a364a1942d5b5203a9c772381ec102628-dev/public/";
 
 class CTGGridApp extends StatefulWidget {
   @override
@@ -99,10 +105,19 @@ class _CTGAppNavTabState extends State<CTGAppNavTab> {
 class CTGAppOnly extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return BlocBuilder<HeartRateCubit, HeartRateState>(
       builder: (context, state) {
-        if (state is LoadedHeartRateScucess) {
+        if (state is LoadingHeartRate) {
+          return Column(
+            children: [
+              Container(
+                height: MediaQuery.of(context).size.height / 3.0,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              Expanded(child: S3ListFileView())
+            ],
+          );
+        } else if (state is LoadedHeartRateScucess) {
           return Column(
             children: [
               CTGGridView(
@@ -118,6 +133,120 @@ class CTGAppOnly extends StatelessWidget {
           );
         }
       },
+    );
+  }
+}
+
+// S3 List File View
+class S3ListFileView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<S3Cubit, S3UploadState>(
+      builder: (context, state) {
+        if (state is S3ListFilesSuccess) {
+          return state.files.isEmpty
+              ? _emptyView()
+              : Column(
+                  children: [
+                    Expanded(child: _listFileView(state)),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: IconButton(
+                          color: Colors.blue,
+                          icon: Icon(
+                            Icons.cloud_upload,
+                            size: 50,
+                          ),
+                          onPressed: () {
+                            BlocProvider.of<S3Cubit>(context).uploadFile();
+                          }),
+                    ),
+                  ],
+                );
+        } else if (state is S3ListFilesFailure) {
+          return _exceptionView();
+        } else {
+          return _listingView();
+        }
+      },
+    );
+  }
+
+  Widget _listingView() {
+    return Container(
+      color: Colors.white,
+      child: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  ListView _listFileView(S3ListFilesSuccess state) {
+    return ListView.builder(
+      itemCount: state.files.length,
+      itemBuilder: (context, index) {
+        return Card(
+          child: InkWell(
+            onTap: () => {
+              // Call CTGAPI to get heart rate traces
+              BlocProvider.of<HeartRateCubit>(context)
+                  .getHeartRateFromAPI(state.files[index]),
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Row(
+                    children: [
+                      _getFileIcon(state.files[index].key.toString()),
+                      Expanded(
+                          child: Padding(
+                        padding: const EdgeInsets.all(10.0),
+                        child: Text(state.files[index].key.toString()),
+                      ))
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Row(
+                    children: [
+                      IconButton(
+                          icon: Icon(Icons.cloud_download), onPressed: () {}),
+                      IconButton(icon: Icon(Icons.delete), onPressed: () {})
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _getFileIcon(String name) {
+    String extension = '.' + name.split(".").last;
+
+    if ('.jpg, .jpeg, .png'.contains(extension)) {
+      return Icon(
+        Icons.image,
+        color: Colors.blue,
+      );
+    }
+    return Icon(Icons.archive);
+  }
+
+  Widget _emptyView() {
+    return Center(
+      child: Text("Not File Yet"),
+    );
+  }
+
+  Widget _exceptionView() {
+    return Center(
+      child: Text("Exception"),
     );
   }
 }
@@ -432,6 +561,18 @@ class CTGGridPainter extends CustomPainter {
   bool shouldRepaint(CTGGridPainter oldDelegate) => false;
 }
 
+// Data Model
+class FHRDataModal {
+  final List<double> mHR;
+  final List<double> fHR;
+  FHRDataModal({this.mHR, this.fHR});
+  factory FHRDataModal.fromJson(Map<String, dynamic> json) {
+    final List<double> mHR = json['mHR'].cast<double>();
+    final List<double> fHR = json['fHR'].cast<double>();
+    return FHRDataModal(mHR: mHR, fHR: fHR);
+  }
+}
+
 // HeartRate Repository
 class HeartRateRepository {
   Future<List<double>> readHeartRateFile(String path) async {
@@ -452,12 +593,28 @@ class HeartRateRepository {
       return null;
     }
   }
+
+  Future<FHRDataModal> getHeartRateFromAPI(StorageItem item) async {
+    try {
+      final url = heartRateApiBaseUrl + item.key.toString();
+      final response = await http.get(url);
+      final json = jsonDecode(response.body);
+      return FHRDataModal.fromJson(json);
+    } catch (e) {
+      print(e);
+      return null;
+    }
+  }
 }
 
 // HeartRateCubit
 abstract class HeartRateState {}
 
-class LoadingHeartRate extends HeartRateState {}
+class LoadingHeartRate extends HeartRateState {
+  final List<double> mHR;
+  final List<double> fHR;
+  LoadingHeartRate({this.mHR, this.fHR});
+}
 
 class LoadedHeartRateScucess extends HeartRateState {
   final List<double> mHR;
@@ -467,7 +624,7 @@ class LoadedHeartRateScucess extends HeartRateState {
 
 class HeartRateCubit extends Cubit<HeartRateState> {
   final _heartrateRepository = HeartRateRepository();
-  HeartRateCubit() : super(LoadingHeartRate());
+  HeartRateCubit() : super(LoadingHeartRate(mHR: [], fHR: []));
 
   Future<void> loadHeartRateFromFile() async {
     final mHR =
@@ -475,5 +632,18 @@ class HeartRateCubit extends Cubit<HeartRateState> {
     final fHR =
         await _heartrateRepository.readHeartRateFile("assets/fheartrate.txt");
     emit(LoadedHeartRateScucess(mHR: mHR, fHR: fHR));
+  }
+
+  Future<void> getHeartRateFromAPI(StorageItem item) async {
+    final List<double> mHR = [];
+    final List<double> fHR = [];
+    emit(LoadingHeartRate(mHR: mHR, fHR: fHR));
+    // Call FHR API
+    try {
+      final fhr = await _heartrateRepository.getHeartRateFromAPI(item);
+      emit(LoadedHeartRateScucess(mHR: fhr.mHR, fHR: fhr.fHR));
+    } catch (e) {
+      print(e);
+    }
   }
 }
