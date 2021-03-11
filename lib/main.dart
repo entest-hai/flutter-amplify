@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
+import 'package:amplify_api/amplify_api.dart';
 // Generated in previous step
 import 'amplifyconfiguration.dart';
 import 'package:file_picker/file_picker.dart';
@@ -48,13 +49,15 @@ class _MyAppState extends State<MyApp> {
         create: (context) => HeartRateCubit()..loadHeartRateFromFile(),
       ),
       BlocProvider(create: (context) => S3Cubit()..listCsvFiles()),
+      BlocProvider(create: (context) => TodoCubit()..fetchTodo()),
     ], child: _amplifyConfigured ? CTGNavTab() : CTGNavTab()));
   }
 
   void _configureAmplify() async {
     if (!mounted) return;
     try {
-      Amplify.addPlugins([AmplifyAuthCognito(), AmplifyStorageS3()]);
+      Amplify.addPlugins(
+          [AmplifyAuthCognito(), AmplifyStorageS3(), AmplifyAPI()]);
       await Amplify.configure(amplifyconfig);
       setState(() {
         _amplifyConfigured = true;
@@ -82,9 +85,7 @@ class _CTGNavTabState extends State<CTGNavTab> {
     Center(
       child: CTGAppOnly(),
     ),
-    Center(
-      child: Text("Profile"),
-    ),
+    TodoDBView(),
     Center(
       child: Text("Setting"),
     ),
@@ -111,8 +112,8 @@ class _CTGNavTabState extends State<CTGNavTab> {
                   label: "CTG",
                   backgroundColor: Colors.blue),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.person),
-                  label: "Profile",
+                  icon: Icon(Icons.data_usage),
+                  label: "DB",
                   backgroundColor: Colors.blue),
               BottomNavigationBarItem(
                   icon: Icon(Icons.settings),
@@ -130,6 +131,66 @@ class _CTGNavTabState extends State<CTGNavTab> {
       ],
       onPopPage: (route, result) {
         return route.didPop(result);
+      },
+    );
+  }
+}
+
+class TodoDBView extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() {
+    // TODO: implement createState
+    return _TodoDBState();
+  }
+}
+
+class _TodoDBState extends State<TodoDBView> {
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return BlocBuilder<TodoCubit, TodoState>(
+      builder: (context, state) {
+        if (state is LoadingTodo) {
+          return Container(
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        } else if (state is LoadedTodoSuccess) {
+          return Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  itemCount: state.todos.length,
+                  itemBuilder: (context, index) {
+                    return Card(
+                      child: ListTile(
+                          title: Text(state.todos[index].name +
+                              " " +
+                              state.todos[index].description)),
+                    );
+                  },
+                ),
+              ),
+              IconButton(
+                  icon:
+                      Icon(Icons.cloud_download, size: 50, color: Colors.blue),
+                  onPressed: () {
+                    BlocProvider.of<TodoCubit>(context).fetchTodo();
+                  }),
+              SizedBox(
+                height: 10,
+              ),
+            ],
+          );
+          ;
+        } else {
+          return Container(
+            child: Center(
+              child: Text("Exception"),
+            ),
+          );
+        }
       },
     );
   }
@@ -657,5 +718,73 @@ class CTGCubit extends Cubit<CTGAPIState> {
 
   void popToDataList() {
     emit(LoadingCTG());
+  }
+}
+
+// Todo Data Modal
+class Todo {
+  final String name;
+  final String description;
+  Todo({this.name, this.description});
+
+  factory Todo.fromJson(Map<String, dynamic> json) {
+    final name = json['name'];
+    final description = json['description'];
+    return Todo(name: name, description: description);
+  }
+}
+
+// Todo Repository
+class TodoRepository {
+  Future<List<Todo>> fetchTodo() async {
+    List<Todo> _todos = [];
+    try {
+      String graphQLDocument = '''query ListTodos {
+      listTodos {
+        items {
+          id
+          name
+          description
+        }
+      }
+    }''';
+
+      var operation = Amplify.API.query(
+          request: GraphQLRequest<String>(
+        document: graphQLDocument,
+      ));
+
+      var response = await operation.response;
+      var items = jsonDecode(response.data.toString())['listTodos']['items'];
+      for (var item in items) {
+        print(item['name']);
+        _todos.add(Todo.fromJson(item));
+      }
+
+      return _todos;
+    } on ApiException catch (e) {
+      print('Query failed: $e');
+      return _todos;
+    }
+  }
+}
+
+// Todo Cubit
+abstract class TodoState {}
+
+class LoadingTodo extends TodoState {}
+
+class LoadedTodoSuccess extends TodoState {
+  final List<Todo> todos;
+  LoadedTodoSuccess({this.todos});
+}
+
+class TodoCubit extends Cubit<TodoState> {
+  final TodoRepository _todoRepository = TodoRepository();
+  TodoCubit() : super(LoadingTodo());
+
+  void fetchTodo() async {
+    final todos = await _todoRepository.fetchTodo();
+    emit(LoadedTodoSuccess(todos: todos));
   }
 }

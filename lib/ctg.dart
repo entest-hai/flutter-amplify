@@ -528,7 +528,9 @@ class CTGGridPainter extends CustomPainter {
       dx2 = 10.0 + (i + 1) * dx;
       dy1 = heartRateToYAxis(mHR[i], size.height - 20);
       dy2 = heartRateToYAxis(mHR[i + 1], size.height - 20);
-      canvas.drawLine(Offset(dx1, dy1), Offset(dx2, dy2), mHRPaint);
+      if (mHR[i] > 0.0 && mHR[i + 1] > 0) {
+        canvas.drawLine(Offset(dx1, dy1), Offset(dx2, dy2), mHRPaint);
+      }
     }
     // Fetal heart rate paint
     final fHRPaint = Paint()
@@ -546,7 +548,9 @@ class CTGGridPainter extends CustomPainter {
       dx2 = 10.0 + (i + 1) * dx;
       dy1 = heartRateToYAxis(fHR[i], size.height - 20);
       dy2 = heartRateToYAxis(fHR[i + 1], size.height - 20);
-      canvas.drawLine(Offset(dx1, dy1), Offset(dx2, dy2), fHRPaint);
+      if (fHR[i] > 0.0 && fHR[i + 1] > 0.0) {
+        canvas.drawLine(Offset(dx1, dy1), Offset(dx2, dy2), fHRPaint);
+      }
     }
   }
 
@@ -572,6 +576,9 @@ class FHRDataModal {
     return FHRDataModal(mHR: mHR, fHR: fHR);
   }
 }
+
+//
+
 
 // HeartRate Repository
 class HeartRateRepository {
