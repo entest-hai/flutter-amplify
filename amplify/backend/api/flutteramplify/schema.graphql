@@ -3,3 +3,10 @@ type Todo @model {
   name: String!
   description: String
 }
+
+type HeartRate @model {
+  id: ID!
+  mHR: [Float]!
+  fHR: [Float]!
+  createdTime: AWSTimestamp!
+}
