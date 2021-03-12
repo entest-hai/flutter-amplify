@@ -468,8 +468,8 @@ class _CTGGridState extends State<CTGGridView> {
 
 // CTGGrid
 class CTGGridPainter extends CustomPainter {
-  final List<double> mHR;
-  final List<double> fHR;
+  List<double> mHR;
+  List<double> fHR;
   CTGGridPainter({this.mHR, this.fHR});
 
   void paint(Canvas canvas, Size size) {
@@ -578,7 +578,6 @@ class FHRDataModal {
 }
 
 //
-
 
 // HeartRate Repository
 class HeartRateRepository {

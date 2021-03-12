@@ -160,6 +160,16 @@ class _BeatState extends State<BeatView> {
         return Column(
           children: [
             Expanded(
+                flex: 2,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: CustomPaint(
+                    painter: CTGPaperPainter(mHR: state.mHR, fHR: state.fHR),
+                    size: Size(MediaQuery.of(context).size.width * 3,
+                        MediaQuery.of(context).size.height / 3),
+                  ),
+                )),
+            Expanded(
                 child: ListView.builder(
               itemCount: state.beats.length,
               itemBuilder: (context, index) {
@@ -195,6 +205,107 @@ class _BeatState extends State<BeatView> {
         );
       }
     });
+  }
+}
+
+// CTGGrid
+class CTGPaperPainter extends CustomPainter {
+  List<double> mHR;
+  List<double> fHR;
+  CTGPaperPainter({this.mHR, this.fHR});
+
+  void paint(Canvas canvas, Size size) {
+    // Draw background
+    final backgroundPaint = Paint()..color = Colors.yellow.withOpacity(0.0);
+    // Draw rect
+    canvas.drawRect(Rect.fromLTWH(10, 10, size.width - 20, size.height - 20),
+        backgroundPaint);
+    // Draw border
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.black
+      ..strokeWidth = 2.0;
+    // Draw rect
+    canvas.drawRect(
+        Rect.fromLTWH(10, 10, size.width - 20, size.height - 20), borderPaint);
+    // Draw heart rate horizontal line x30bpm square
+    final stickPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.black.withOpacity(0.5)
+      ..strokeWidth = 0.7;
+    for (var i = 2; i < 8; i++) {
+      var yOffset = heartRateToYAxis(i * 30.0, size.height - 20);
+      canvas.drawLine(
+          Offset(10.0, yOffset), Offset(size.width - 10, yOffset), stickPaint);
+    }
+    // Draw time vertical line x2minute square
+    for (var i = 0; i < 30; i++) {
+      var xOffset = 10.0 + i * (size.width - 20) / 30;
+      canvas.drawLine(
+          Offset(xOffset, 10.0), Offset(xOffset, size.height - 10), stickPaint);
+    }
+    // Draw time vertical line x10minute mark
+    final tenMinutePain = Paint()..color = Colors.black.withOpacity(0.2);
+    for (var i = 0; i < 6; i++) {
+      canvas.drawRect(
+          Rect.fromLTWH(10.0 + i * (size.width - 20) / 6, 10,
+              (size.width - 20) / 60, size.height - 20),
+          tenMinutePain);
+    }
+
+    // Maternal heart rate paint
+    final mHRPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.blue
+      ..strokeWidth = 1.5;
+    // Plot maternal heart rate
+    var numHeartRate = 60 * 60 * 4;
+    var dx = (size.width - 20) / numHeartRate;
+    var dx1 = 0.0;
+    var dx2 = 0.0;
+    var dy1 = 0.0;
+    var dy2 = 0.0;
+    for (var i = 0; i < mHR.length - 1; i++) {
+      dx1 = 10.0 + i * dx;
+      dx2 = 10.0 + (i + 1) * dx;
+      dy1 = heartRateToYAxis(mHR[i], size.height - 20);
+      dy2 = heartRateToYAxis(mHR[i + 1], size.height - 20);
+      if (mHR[i] > 0.0 && mHR[i + 1] > 0) {
+        canvas.drawLine(Offset(dx1, dy1), Offset(dx2, dy2), mHRPaint);
+      }
+    }
+    // Fetal heart rate paint
+    final fHRPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.red
+      ..strokeWidth = 1.5;
+
+    // Plot maternal heart rate
+    dx1 = 0.0;
+    dx2 = 0.0;
+    dy1 = 0.0;
+    dy2 = 0.0;
+    for (var i = 0; i < fHR.length - 1; i++) {
+      dx1 = 10.0 + i * dx;
+      dx2 = 10.0 + (i + 1) * dx;
+      dy1 = heartRateToYAxis(fHR[i], size.height - 20);
+      dy2 = heartRateToYAxis(fHR[i + 1], size.height - 20);
+      if (fHR[i] > 0.0 && fHR[i + 1] > 0.0) {
+        canvas.drawLine(Offset(dx1, dy1), Offset(dx2, dy2), fHRPaint);
+      }
+    }
+  }
+
+  double heartRateToYAxis(double heartrate, double height) {
+    final minHR = 30.0;
+    final maxHR = 240.0;
+    final dy = height / (maxHR - minHR);
+    return 10.0 + (maxHR - heartrate) * dy;
+  }
+
+  @override
+  bool shouldRepaint(CTGPaperPainter oldDelegate) {
+    return mHR != oldDelegate.mHR;
   }
 }
 
@@ -972,9 +1083,20 @@ class Beat {
   Beat({this.createdTime, this.mHR, this.fHR});
 
   factory Beat.fromJson(Map<String, dynamic> json) {
+    final List<double> mHR = [];
+    final List<double> fHR = [];
     final createdTime = json['createdTime'] as int;
-    final mHR = json['mHR'].cast<double>();
-    final fHR = json['fHR'].cast<double>();
+    final mBeats = json['mHR'];
+    final fBeats = json['fHR'];
+
+    for (var beat in mBeats) {
+      mHR.add(double.parse('$beat'));
+    }
+
+    for (var beat in fBeats) {
+      fHR.add(double.parse('$beat'));
+    }
+
     return Beat(createdTime: createdTime, mHR: mHR, fHR: fHR);
   }
 }
@@ -994,7 +1116,7 @@ class BeatRepository {
     try {
       print("write beat to db");
       String graphQLDocument = '''mutation CreateHeartRate {
-      createHeartRate(input: {createdTime: $createdTime, fHR: ${res.fHR}, mHR: ${res.fHR}}) {
+      createHeartRate(input: {createdTime: $createdTime, fHR: ${res.fHR}, mHR: ${res.mHR}}) {
           createdTime
           fHR
           mHR
@@ -1007,7 +1129,7 @@ class BeatRepository {
       ));
 
       var response = await operation.response;
-      print(response.data);
+      // print(response.data);
     } on ApiException catch (e) {
       print(e);
     }
@@ -1015,6 +1137,7 @@ class BeatRepository {
 
   Future<List<Beat>> fetchBeat() async {
     List<Beat> beats = [];
+
     try {
       String graphQLDocument = '''query ListHeartRates {
       listHeartRates {
@@ -1034,7 +1157,6 @@ class BeatRepository {
       var response = await operation.response;
       var items =
           jsonDecode(response.data.toString())['listHeartRates']['items'];
-      print(items);
       for (var item in items) {
         beats.add(Beat.fromJson(item));
       }
@@ -1057,7 +1179,9 @@ class LoadingBeat extends BeatState {}
 
 class LoadedBeatSuccess extends BeatState {
   final List<Beat> beats;
-  LoadedBeatSuccess({this.beats});
+  final List<double> mHR;
+  final List<double> fHR;
+  LoadedBeatSuccess({this.beats, this.mHR, this.fHR});
 }
 
 class BeatCubit extends Cubit<BeatState> {
@@ -1065,17 +1189,26 @@ class BeatCubit extends Cubit<BeatState> {
   BeatCubit() : super(LoadingBeat());
 
   Future<void> fetchBeat() async {
+    List<double> mHR = [];
+    List<double> fHR = [];
     final beats = await _beatRepository.fetchBeat();
-
-    // sort beats by created time
-    emit(LoadedBeatSuccess(beats: beats));
+    for (var beat in beats) {
+      mHR += beat.mHR;
+      fHR += beat.fHR;
+    }
+    emit(LoadedBeatSuccess(beats: beats, mHR: mHR, fHR: fHR));
   }
 
   Future<void> writeBeat(StorageItem item) async {
+    List<double> mHR = [];
+    List<double> fHR = [];
     await _beatRepository.writeBeat(item);
     final beats = await _beatRepository.fetchBeat();
-
+    for (var beat in beats) {
+      mHR += beat.mHR;
+      fHR += beat.fHR;
+    }
     // sort beats by createdTime
-    emit(LoadedBeatSuccess(beats: beats));
+    emit(LoadedBeatSuccess(beats: beats, mHR: mHR, fHR: fHR));
   }
 }
