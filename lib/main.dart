@@ -50,6 +50,7 @@ class _MyAppState extends State<MyApp> {
       ),
       BlocProvider(create: (context) => S3Cubit()..listCsvFiles()),
       BlocProvider(create: (context) => TodoCubit()..subscribeTodo()),
+      BlocProvider(create: (context) => BeatCubit()..fetchBeat()),
     ], child: _amplifyConfigured ? CTGNavTab() : CTGNavTab()));
   }
 
@@ -87,7 +88,7 @@ class _CTGNavTabState extends State<CTGNavTab> {
     ),
     TodoDBView(),
     Center(
-      child: Text("Setting"),
+      child: BeatView(),
     ),
   ];
   @override
@@ -133,6 +134,47 @@ class _CTGNavTabState extends State<CTGNavTab> {
         return route.didPop(result);
       },
     );
+  }
+}
+
+class BeatView extends StatefulWidget {
+  @override 
+  State<StatefulWidget> createState() {
+    // TODO: implement createState
+    return _BeatState();
+  }
+}
+
+class _BeatState extends State<BeatView> {
+  @override 
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return BlocBuilder<BeatCubit, BeatState>(builder: (context, state){
+      if (state is LoadingBeat){
+        return Container(
+          child: Center(child: CircularProgressIndicator(),),
+        );
+      } else if (state is LoadedBeatSuccess){
+        return Column(
+          children: [
+            Expanded(child: ListView.builder(
+              itemCount: state.beat.mHR.length,
+              itemBuilder: (context, index){
+                return Card(
+                  child: ListTile(title: Text("mHR: ${state.beat.mHR[index]} fHR: ${state.beat.fHR[index]}"),),
+                );
+              },
+            )),
+            IconButton(icon: Icon(Icons.cloud_download, size: 50, color: Colors.blue), onPressed: (){}),
+            SizedBox(
+              height: 10,
+            ),
+          ],
+        );
+      } else {
+        return Container(child: Center(child: Text("Exception"),),);
+      }
+    });
   }
 }
 
@@ -823,4 +865,71 @@ class TodoCubit extends Cubit<TodoState> {
       print('Failed to establish subscription: $e');
     }
   }
+}
+
+// 
+// Beat Model
+class Beat {
+  final int createdTime;
+  final List<double> mHR;
+  final List<double> fHR;  
+  Beat({this.createdTime, this.mHR, this.fHR});
+
+  factory Beat.fromJson(Map<String, dynamic> json) {
+    final createdTime = json['createdTime'] as int;
+    final mHR = json['mHR'].cast<double>();
+    final fHR = json['fHR'].cast<double>();
+    return Beat(createdTime: createdTime, mHR: mHR, fHR: fHR);
+  }
+}
+
+// Beat Repository 
+class BeatRepository {
+  Future<Beat> fetchBeat() async {
+    try {
+      String graphQLDocument = '''query ListHeartRates {
+      listHeartRates {
+        items {
+          createdTime
+          mHR
+          fHR
+        }
+      }
+    }''';
+
+      var operation = Amplify.API.query(
+          request: GraphQLRequest<String>(
+          document: graphQLDocument,
+      ));
+
+      var response = await operation.response;
+      var data = jsonDecode(response.data.toString())['listHeartRates']['items'][0];
+      print(data);
+      return Beat.fromJson(data);
+    } on ApiException catch (e) {
+      print('Query failed: $e');
+      return null;
+    }
+  }
+}
+
+// Beat Cubit 
+abstract class BeatState{}
+
+class LoadingBeat extends BeatState{}
+
+class LoadedBeatSuccess extends BeatState{
+  final Beat beat;
+  LoadedBeatSuccess({this.beat});
+}
+
+class BeatCubit extends Cubit<BeatState> {
+  final _beatRepository = BeatRepository();
+  BeatCubit() : super(LoadingBeat());
+
+  Future<void> fetchBeat() async {
+    final beat = await _beatRepository.fetchBeat();
+    emit(LoadedBeatSuccess(beat: beat));
+  }
+  
 }
