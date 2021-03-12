@@ -138,7 +138,7 @@ class _CTGNavTabState extends State<CTGNavTab> {
 }
 
 class BeatView extends StatefulWidget {
-  @override 
+  @override
   State<StatefulWidget> createState() {
     // TODO: implement createState
     return _BeatState();
@@ -146,35 +146,131 @@ class BeatView extends StatefulWidget {
 }
 
 class _BeatState extends State<BeatView> {
-  @override 
+  @override
   Widget build(BuildContext context) {
     // TODO: implement build
-    return BlocBuilder<BeatCubit, BeatState>(builder: (context, state){
-      if (state is LoadingBeat){
+    return BlocBuilder<BeatCubit, BeatState>(builder: (context, state) {
+      if (state is LoadingBeat) {
         return Container(
-          child: Center(child: CircularProgressIndicator(),),
+          child: Center(
+            child: CircularProgressIndicator(),
+          ),
         );
-      } else if (state is LoadedBeatSuccess){
+      } else if (state is LoadedBeatSuccess) {
         return Column(
           children: [
-            Expanded(child: ListView.builder(
-              itemCount: state.beat.mHR.length,
-              itemBuilder: (context, index){
+            Expanded(
+                child: ListView.builder(
+              itemCount: state.beats.length,
+              itemBuilder: (context, index) {
                 return Card(
-                  child: ListTile(title: Text("mHR: ${state.beat.mHR[index]} fHR: ${state.beat.fHR[index]}"),),
+                  child: ListTile(
+                    title: Text(
+                        "createdTime: ${state.beats[index].createdTime} mHR: ${state.beats[index].mHR.length} fHR: ${state.beats[index].fHR.length}"),
+                  ),
                 );
               },
             )),
-            IconButton(icon: Icon(Icons.cloud_download, size: 50, color: Colors.blue), onPressed: (){}),
+            SizedBox(
+              height: 25,
+            ),
+            Expanded(
+              child: S3ListRawECGView(),
+            ),
+            IconButton(
+                icon: Icon(Icons.cloud_upload, size: 50, color: Colors.blue),
+                onPressed: () {
+                  // BlocProvider.of<BeatCubit>(context).writeBeat();
+                }),
             SizedBox(
               height: 10,
             ),
           ],
         );
       } else {
-        return Container(child: Center(child: Text("Exception"),),);
+        return Container(
+          child: Center(
+            child: Text("Exception"),
+          ),
+        );
       }
     });
+  }
+}
+
+class S3ListRawECGView extends StatelessWidget {
+  const S3ListRawECGView({
+    Key key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<S3Cubit, S3UploadState>(builder: (context, state) {
+      if (state is S3ListFilesSuccess) {
+        return ListView.builder(
+          itemCount: state.files.length,
+          itemBuilder: (context, index) {
+            return Card(
+                child: InkWell(
+              onTap: () {
+                BlocProvider.of<BeatCubit>(context)
+                    .writeBeat(state.files[index]);
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Row(
+                      children: [
+                        _getFileIcon(state.files[index].key.toString()),
+                        Expanded(
+                            child: Padding(
+                          padding: const EdgeInsets.all(10.0),
+                          child: Text(state.files[index].key.toString()),
+                        ))
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: Row(
+                      children: [
+                        IconButton(
+                            icon: Icon(Icons.cloud_download), onPressed: () {}),
+                        IconButton(icon: Icon(Icons.delete), onPressed: () {})
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ));
+          },
+        );
+      } else if (state is S3ListFilesFailure) {
+        return Container(
+          child: Center(
+            child: Text("Exception"),
+          ),
+        );
+      } else {
+        return Center(
+          child: CircularProgressIndicator(),
+        );
+      }
+    });
+  }
+
+  Widget _getFileIcon(String name) {
+    String extension = '.' + name.split(".").last;
+
+    if ('.jpg, .jpeg, .png'.contains(extension)) {
+      return Icon(
+        Icons.image,
+        color: Colors.blue,
+      );
+    }
+    return Icon(Icons.archive);
   }
 }
 
@@ -867,12 +963,12 @@ class TodoCubit extends Cubit<TodoState> {
   }
 }
 
-// 
+//
 // Beat Model
 class Beat {
   final int createdTime;
   final List<double> mHR;
-  final List<double> fHR;  
+  final List<double> fHR;
   Beat({this.createdTime, this.mHR, this.fHR});
 
   factory Beat.fromJson(Map<String, dynamic> json) {
@@ -883,9 +979,42 @@ class Beat {
   }
 }
 
-// Beat Repository 
+// Beat Repository
 class BeatRepository {
-  Future<Beat> fetchBeat() async {
+  final _heartRateRepository = HeartRateRepository();
+  Future<void> writeBeat(StorageItem item) async {
+    // Call FHR API
+    final res = await _heartRateRepository
+        .getHeartRateFromAPI(StorageItem(key: item.key));
+
+    // Parse return heart rate
+    final int createdTime = DateTime.now().millisecondsSinceEpoch;
+
+    // Write to DB
+    try {
+      print("write beat to db");
+      String graphQLDocument = '''mutation CreateHeartRate {
+      createHeartRate(input: {createdTime: $createdTime, fHR: ${res.fHR}, mHR: ${res.fHR}}) {
+          createdTime
+          fHR
+          mHR
+        }
+    }''';
+
+      var operation = Amplify.API.mutate(
+          request: GraphQLRequest<String>(
+        document: graphQLDocument,
+      ));
+
+      var response = await operation.response;
+      print(response.data);
+    } on ApiException catch (e) {
+      print(e);
+    }
+  }
+
+  Future<List<Beat>> fetchBeat() async {
+    List<Beat> beats = [];
     try {
       String graphQLDocument = '''query ListHeartRates {
       listHeartRates {
@@ -899,13 +1028,21 @@ class BeatRepository {
 
       var operation = Amplify.API.query(
           request: GraphQLRequest<String>(
-          document: graphQLDocument,
+        document: graphQLDocument,
       ));
 
       var response = await operation.response;
-      var data = jsonDecode(response.data.toString())['listHeartRates']['items'][0];
-      print(data);
-      return Beat.fromJson(data);
+      var items =
+          jsonDecode(response.data.toString())['listHeartRates']['items'];
+      print(items);
+      for (var item in items) {
+        beats.add(Beat.fromJson(item));
+      }
+
+      // sort beats by created time
+      beats.sort((a, b) => b.createdTime.compareTo(a.createdTime));
+
+      return beats;
     } on ApiException catch (e) {
       print('Query failed: $e');
       return null;
@@ -913,14 +1050,14 @@ class BeatRepository {
   }
 }
 
-// Beat Cubit 
-abstract class BeatState{}
+// Beat Cubit
+abstract class BeatState {}
 
-class LoadingBeat extends BeatState{}
+class LoadingBeat extends BeatState {}
 
-class LoadedBeatSuccess extends BeatState{
-  final Beat beat;
-  LoadedBeatSuccess({this.beat});
+class LoadedBeatSuccess extends BeatState {
+  final List<Beat> beats;
+  LoadedBeatSuccess({this.beats});
 }
 
 class BeatCubit extends Cubit<BeatState> {
@@ -928,8 +1065,17 @@ class BeatCubit extends Cubit<BeatState> {
   BeatCubit() : super(LoadingBeat());
 
   Future<void> fetchBeat() async {
-    final beat = await _beatRepository.fetchBeat();
-    emit(LoadedBeatSuccess(beat: beat));
+    final beats = await _beatRepository.fetchBeat();
+
+    // sort beats by created time
+    emit(LoadedBeatSuccess(beats: beats));
   }
-  
+
+  Future<void> writeBeat(StorageItem item) async {
+    await _beatRepository.writeBeat(item);
+    final beats = await _beatRepository.fetchBeat();
+
+    // sort beats by createdTime
+    emit(LoadedBeatSuccess(beats: beats));
+  }
 }
