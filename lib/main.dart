@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 // Amplify Flutter Packages
 import 'package:amplify_flutter/amplify.dart';
@@ -146,6 +147,8 @@ class BeatView extends StatefulWidget {
 }
 
 class _BeatState extends State<BeatView> {
+  Timer myTimer;
+  int counter = 0;
   @override
   Widget build(BuildContext context) {
     // TODO: implement build
@@ -191,6 +194,7 @@ class _BeatState extends State<BeatView> {
                 icon: Icon(Icons.cloud_upload, size: 50, color: Colors.blue),
                 onPressed: () {
                   // BlocProvider.of<BeatCubit>(context).writeBeat();
+                  startTimer();
                 }),
             SizedBox(
               height: 10,
@@ -204,6 +208,29 @@ class _BeatState extends State<BeatView> {
           ),
         );
       }
+    });
+  }
+
+  void startTimer() {
+    BlocProvider.of<BeatCubit>(context)
+        .writeBeat(StorageItem(key: "1004_0_.csv"));
+
+    setState(() {
+      counter = counter + 1;
+    });
+
+    myTimer = Timer.periodic(Duration(seconds: 10), (myTimer) {
+      if (counter > 30) {
+        setState(() {
+          counter = 0;
+        });
+      }
+      print("Call FHR API");
+      BlocProvider.of<BeatCubit>(context)
+          .writeBeat(StorageItem(key: "1004_" + counter.toString() + "_.csv"));
+      setState(() {
+        counter = counter + 1;
+      });
     });
   }
 }
@@ -1162,7 +1189,7 @@ class BeatRepository {
       }
 
       // sort beats by created time
-      beats.sort((a, b) => b.createdTime.compareTo(a.createdTime));
+      beats.sort((a, b) => a.createdTime.compareTo(b.createdTime));
 
       return beats;
     } on ApiException catch (e) {
