@@ -18,6 +18,7 @@ class Todo {
 // Todo Repository
 class TodoRepository {
   Future<List<Todo>> fetchTodo() async {
+    print("fetch todo from db");
     List<Todo> _todos = [];
     try {
       String graphQLDocument = '''query ListTodos {
@@ -38,7 +39,7 @@ class TodoRepository {
       var response = await operation.response;
       var items = jsonDecode(response.data.toString())['listTodos']['items'];
       for (var item in items) {
-        print(item['name']);
+        // print(item['name']);
         _todos.add(Todo.fromJson(item));
       }
 
