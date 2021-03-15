@@ -14,6 +14,9 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'ctg.dart';
 import 's3.dart';
+// Todo Cubit
+import 'todo_view.dart';
+import 'todo_cubit.dart';
 
 // Constant
 final sqiApiBaseUrl =
@@ -179,7 +182,7 @@ class _BeatState extends State<BeatView> {
                 return Card(
                   child: ListTile(
                     title: Text(
-                        "createdTime: ${state.beats[index].createdTime} mHR: ${state.beats[index].mHR.length} fHR: ${state.beats[index].fHR.length}"),
+                        "createdTime: ${state.beats.reversed.toList()[index].createdTime} mHR: ${state.beats.reversed.toList()[index].mHR.length} fHR: ${state.beats.reversed.toList()[index].fHR.length}"),
                   ),
                 );
               },
@@ -409,66 +412,6 @@ class S3ListRawECGView extends StatelessWidget {
       );
     }
     return Icon(Icons.archive);
-  }
-}
-
-class TodoDBView extends StatefulWidget {
-  @override
-  State<StatefulWidget> createState() {
-    // TODO: implement createState
-    return _TodoDBState();
-  }
-}
-
-class _TodoDBState extends State<TodoDBView> {
-  @override
-  Widget build(BuildContext context) {
-    // TODO: implement build
-    return BlocBuilder<TodoCubit, TodoState>(
-      builder: (context, state) {
-        if (state is LoadingTodo) {
-          return Container(
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        } else if (state is LoadedTodoSuccess) {
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  itemCount: state.todos.length,
-                  itemBuilder: (context, index) {
-                    return Card(
-                      child: ListTile(
-                          title: Text(state.todos[index].name +
-                              " " +
-                              state.todos[index].description)),
-                    );
-                  },
-                ),
-              ),
-              IconButton(
-                  icon:
-                      Icon(Icons.cloud_download, size: 50, color: Colors.blue),
-                  onPressed: () {
-                    BlocProvider.of<TodoCubit>(context).fetchTodo();
-                  }),
-              SizedBox(
-                height: 10,
-              ),
-            ],
-          );
-          ;
-        } else {
-          return Container(
-            child: Center(
-              child: Text("Exception"),
-            ),
-          );
-        }
-      },
-    );
   }
 }
 
@@ -994,110 +937,6 @@ class CTGCubit extends Cubit<CTGAPIState> {
 
   void popToDataList() {
     emit(LoadingCTG());
-  }
-}
-
-// Todo Data Modal
-class Todo {
-  final String name;
-  final String description;
-  Todo({this.name, this.description});
-
-  factory Todo.fromJson(Map<String, dynamic> json) {
-    final name = json['name'];
-    final description = json['description'];
-    return Todo(name: name, description: description);
-  }
-}
-
-// Todo Repository
-class TodoRepository {
-  Future<List<Todo>> fetchTodo() async {
-    List<Todo> _todos = [];
-    try {
-      String graphQLDocument = '''query ListTodos {
-      listTodos {
-        items {
-          id
-          name
-          description
-        }
-      }
-    }''';
-
-      var operation = Amplify.API.query(
-          request: GraphQLRequest<String>(
-        document: graphQLDocument,
-      ));
-
-      var response = await operation.response;
-      var items = jsonDecode(response.data.toString())['listTodos']['items'];
-      for (var item in items) {
-        print(item['name']);
-        _todos.add(Todo.fromJson(item));
-      }
-
-      return _todos;
-    } on ApiException catch (e) {
-      print('Query failed: $e');
-      return _todos;
-    }
-  }
-}
-
-// Todo Cubit
-abstract class TodoState {}
-
-class LoadingTodo extends TodoState {}
-
-class LoadedTodoSuccess extends TodoState {
-  final List<Todo> todos;
-  LoadedTodoSuccess({this.todos});
-}
-
-class TodoCubit extends Cubit<TodoState> {
-  final TodoRepository _todoRepository = TodoRepository();
-  TodoCubit() : super(LoadingTodo());
-
-  void fetchTodo() async {
-    final todos = await _todoRepository.fetchTodo();
-    emit(LoadedTodoSuccess(todos: todos));
-  }
-
-  void subscribeTodo() async {
-    // load data
-    final todos = await _todoRepository.fetchTodo();
-    emit(LoadedTodoSuccess(todos: todos));
-    // observe changes
-    try {
-      String graphQLDocument = '''subscription OnCreateTodo {
-        onCreateTodo {
-          id
-          name
-          description
-        }
-      }''';
-
-      var operation = Amplify.API.subscribe(
-          request: GraphQLRequest<String>(document: graphQLDocument),
-          onData: (event) {
-            // print('Subscription event data received: ${event.data}');
-            todos.add(Todo.fromJson(
-                jsonDecode(event.data.toString())['onCreateTodo']));
-            emit(LoadedTodoSuccess(todos: todos));
-          },
-          onEstablished: () {
-            print('Subscription established');
-          },
-          onError: (e) {
-            print('Subscription failed with error: $e');
-          },
-          onDone: () {
-            print('Subscription has been closed successfully');
-          });
-    } on ApiException catch (e) {
-      print('Failed to establish subscription: $e');
-    }
   }
 }
 
