@@ -1,20 +1,13 @@
 import 'dart:async';
-import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 's3.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
-final heartRateApiBaseUrl =
-    "https://bln9cf30wj.execute-api.ap-southeast-1.amazonaws.com/default/femomfhr?filename=s3://flutteramplify32917a364a1942d5b5203a9c772381ec102628-dev/public/";
+import 'ctg_cubit.dart';
 
 class CTGGridApp extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
-    // TODO: implement createState
     return _CTGAppState();
   }
 }
@@ -22,7 +15,6 @@ class CTGGridApp extends StatefulWidget {
 class _CTGAppState extends State<CTGGridApp> {
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return MaterialApp(
       home: MultiBlocProvider(providers: [
         BlocProvider(
@@ -35,7 +27,6 @@ class _CTGAppState extends State<CTGGridApp> {
 class CTGAppNavTab extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
-    // TODO: implement createState
     return _CTGAppNavTabState();
   }
 }
@@ -58,7 +49,6 @@ class _CTGAppNavTabState extends State<CTGAppNavTab> {
   ];
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return Navigator(
       pages: [
         MaterialPage(
@@ -254,7 +244,6 @@ class S3ListFileView extends StatelessWidget {
 class CTGAppNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return Navigator(
       pages: [
         MaterialPage(
@@ -298,7 +287,6 @@ class _SineWaveState extends State<SineWaveApp> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -339,7 +327,6 @@ class CustomPainterApp extends StatelessWidget {
   var offset = 0.0;
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -378,7 +365,6 @@ class CustomPainterApp extends StatelessWidget {
 
 class FaceOutlinePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
-    // TODO: Draw here
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
@@ -563,93 +549,4 @@ class CTGGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CTGGridPainter oldDelegate) => false;
-}
-
-// Data Model
-class FHRDataModal {
-  final List<double> mHR;
-  final List<double> fHR;
-  FHRDataModal({this.mHR, this.fHR});
-  factory FHRDataModal.fromJson(Map<String, dynamic> json) {
-    final List<double> mHR = json['mHR'].cast<double>();
-    final List<double> fHR = json['fHR'].cast<double>();
-    return FHRDataModal(mHR: mHR, fHR: fHR);
-  }
-}
-
-//
-
-// HeartRate Repository
-class HeartRateRepository {
-  Future<List<double>> readHeartRateFile(String path) async {
-    List<double> heartrates = [];
-    try {
-      final content = await rootBundle.loadString(path);
-      final nums = content.split("\n").toList();
-      for (var value in nums) {
-        try {
-          heartrates.add(double.parse(value));
-        } catch (e) {
-          heartrates.add(0.0);
-        }
-      }
-      return heartrates;
-    } catch (e) {
-      print(e);
-      return null;
-    }
-  }
-
-  Future<FHRDataModal> getHeartRateFromAPI(StorageItem item) async {
-    try {
-      final url = heartRateApiBaseUrl + item.key.toString();
-      final response = await http.get(url);
-      final json = jsonDecode(response.body);
-      return FHRDataModal.fromJson(json);
-    } catch (e) {
-      print(e);
-      return null;
-    }
-  }
-}
-
-// HeartRateCubit
-abstract class HeartRateState {}
-
-class LoadingHeartRate extends HeartRateState {
-  final List<double> mHR;
-  final List<double> fHR;
-  LoadingHeartRate({this.mHR, this.fHR});
-}
-
-class LoadedHeartRateScucess extends HeartRateState {
-  final List<double> mHR;
-  final List<double> fHR;
-  LoadedHeartRateScucess({this.mHR, this.fHR});
-}
-
-class HeartRateCubit extends Cubit<HeartRateState> {
-  final _heartrateRepository = HeartRateRepository();
-  HeartRateCubit() : super(LoadingHeartRate(mHR: [], fHR: []));
-
-  Future<void> loadHeartRateFromFile() async {
-    final mHR =
-        await _heartrateRepository.readHeartRateFile("assets/mheartrate.txt");
-    final fHR =
-        await _heartrateRepository.readHeartRateFile("assets/fheartrate.txt");
-    emit(LoadedHeartRateScucess(mHR: mHR, fHR: fHR));
-  }
-
-  Future<void> getHeartRateFromAPI(StorageItem item) async {
-    final List<double> mHR = [];
-    final List<double> fHR = [];
-    emit(LoadingHeartRate(mHR: mHR, fHR: fHR));
-    // Call FHR API
-    try {
-      final fhr = await _heartrateRepository.getHeartRateFromAPI(item);
-      emit(LoadedHeartRateScucess(mHR: fhr.mHR, fHR: fhr.fHR));
-    } catch (e) {
-      print(e);
-    }
-  }
 }
