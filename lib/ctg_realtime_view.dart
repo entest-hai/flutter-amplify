@@ -78,7 +78,7 @@ class _BeatState extends State<BeatView> {
 
   void startTimer() {
     BlocProvider.of<BeatCubit>(context)
-        .writeBeat(StorageItem(key: "1004_0_.csv"));
+        .writeBeat(StorageItem(key: "1004_0_.dat"));
 
     setState(() {
       counter = counter + 1;
@@ -92,7 +92,7 @@ class _BeatState extends State<BeatView> {
       }
       print("Call FHR API");
       BlocProvider.of<BeatCubit>(context)
-          .writeBeat(StorageItem(key: "1004_" + counter.toString() + "_.csv"));
+          .writeBeat(StorageItem(key: "1004_" + counter.toString() + "_.dat"));
       setState(() {
         counter = counter + 1;
       });

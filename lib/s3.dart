@@ -48,7 +48,8 @@ class S3Repository {
     try {
       ListResult res = await Amplify.Storage.list();
       List<StorageItem> items = res.items
-          .where((element) => element.key.toString().contains(".csv"))
+          .where((element) => (element.key.toString().contains(".csv") ||
+              element.key.toString().contains(".dat")))
           .toList();
       return items;
     } on StorageException catch (e) {
@@ -104,4 +105,3 @@ class S3Cubit extends Cubit<S3UploadState> {
     listFiles();
   }
 }
-
