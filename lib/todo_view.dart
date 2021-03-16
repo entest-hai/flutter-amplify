@@ -12,7 +12,7 @@ class TodoDBView extends StatefulWidget {
 class _TodoDBState extends State<TodoDBView> {
   var _hasReachMax = false;
   final _scrollController = ScrollController();
-  final _scrollThreshold = 200.0;
+  final _scrollThreshold = 100.0;
 
   @override
   void initState() {
