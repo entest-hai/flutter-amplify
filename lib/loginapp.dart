@@ -170,7 +170,7 @@ class LoginView extends StatelessWidget {
   }
 }
 
-// Sign Up View
+// Confirmation SignUp View
 class ConfirmationView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -182,21 +182,26 @@ class ConfirmationView extends StatelessWidget {
   }
 }
 
-// Confirmation View
+// SignUp View
 class SignUpView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("SigUp"),
+        title: Text("SignUp"),
       ),
-      body: SafeArea(
-        child: Stack(
-          alignment: Alignment.bottomCenter,
-          children: [
-            _signUpForm(),
-            _showLoginButton(context),
-          ],
+      body: BlocProvider(
+        create: (context) => SignUpBloc(
+            authRepo: context.read<AuthRepository>(),
+            authCubit: context.read<AuthCubit>()),
+        child: SafeArea(
+          child: Stack(
+            alignment: Alignment.bottomCenter,
+            children: [
+              _signUpForm(),
+              _showLoginButton(context),
+            ],
+          ),
         ),
       ),
     );
@@ -220,30 +225,55 @@ class SignUpView extends StatelessWidget {
   }
 
   Widget _usernameField() {
-    return TextFormField(
-      decoration:
-          InputDecoration(icon: Icon(Icons.person), hintText: "Username"),
-      onChanged: (value) {},
-    );
+    return BlocBuilder<SignUpBloc, SignUpState>(builder: (context, state) {
+      return TextFormField(
+        decoration:
+            InputDecoration(icon: Icon(Icons.person), hintText: "Username"),
+        onChanged: (value) {
+          context
+              .read<SignUpBloc>()
+              .add(SignUpUsernameChanged(username: value));
+        },
+      );
+    });
   }
 
   Widget _passwordField() {
-    return TextFormField(
-      decoration:
-          InputDecoration(icon: Icon(Icons.security), hintText: "Password"),
-      onChanged: (value) {},
-    );
+    return BlocBuilder<SignUpBloc, SignUpState>(builder: (context, state) {
+      return TextFormField(
+        decoration:
+            InputDecoration(icon: Icon(Icons.security), hintText: "Password"),
+        onChanged: (value) {
+          context
+              .read<SignUpBloc>()
+              .add(SignUpPasswordChanged(password: value));
+        },
+      );
+    });
   }
 
   Widget _emailField() {
-    return TextFormField(
-      decoration: InputDecoration(icon: Icon(Icons.email), hintText: "Email"),
-      onChanged: (value) {},
-    );
+    return BlocBuilder<SignUpBloc, SignUpState>(builder: (context, state) {
+      return TextFormField(
+        decoration: InputDecoration(icon: Icon(Icons.email), hintText: "Email"),
+        onChanged: (value) {
+          context.read<SignUpBloc>().add(SignUpEmailChanged(email: value));
+        },
+      );
+    });
   }
 
   Widget _singUpButton() {
-    return ElevatedButton(onPressed: () {}, child: Text("Sign Up"));
+    return BlocBuilder<SignUpBloc, SignUpState>(builder: (context, state) {
+      return state.formStatus is FormSubmitting
+          ? CircularProgressIndicator()
+          : ElevatedButton(
+              onPressed: () {
+                context.read<SignUpBloc>().add(SignUpSubmitted());
+              },
+              child: Text("Sign Up"),
+            );
+    });
   }
 
   Widget _showLoginButton(BuildContext context) {
@@ -422,9 +452,96 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
   }
 }
 
+// SignUp Event
+abstract class SignUpEvent {}
+
+class SignUpUsernameChanged extends SignUpEvent {
+  final String username;
+  SignUpUsernameChanged({this.username});
+}
+
+class SignUpPasswordChanged extends SignUpEvent {
+  final password;
+  SignUpPasswordChanged({this.password});
+}
+
+class SignUpEmailChanged extends SignUpEvent {
+  final String email;
+  SignUpEmailChanged({this.email});
+}
+
+class SignUpSubmitted extends SignUpEvent {}
+
 // SignUp State
+class SignUpState {
+  final String username;
+  final String email;
+  final String password;
+  final FormSubmissionStatus formStatus;
+
+  SignUpState({
+    this.username = '',
+    this.email = '',
+    this.password = '',
+    this.formStatus = const InitialFormStatus(),
+  });
+
+  SignUpState copyWidth({
+    String username,
+    String email,
+    String password,
+    FormSubmissionStatus formStatus,
+  }) {
+    return SignUpState(
+        username: username ?? this.username,
+        email: email ?? this.email,
+        password: password ?? this.password,
+        formStatus: formStatus ?? this.formStatus);
+  }
+}
 
 // SignUp Bloc
+class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
+  final AuthRepository authRepo;
+  final AuthCubit authCubit;
+
+  SignUpBloc({this.authRepo, this.authCubit}) : super(SignUpState());
+
+  @override
+  Stream<SignUpState> mapEventToState(SignUpEvent event) async* {
+    // Username changed
+    if (event is SignUpUsernameChanged) {
+      yield state.copyWidth(username: event.username);
+    }
+
+    // Password changed
+    else if (event is SignUpEmailChanged) {
+      yield state.copyWidth(email: event.email);
+    }
+
+    // Form submitted
+    else if (event is SignUpSubmitted) {
+      yield state.copyWidth(formStatus: FormSubmitting());
+
+      // AuthRepository and Amplify sign up
+      try {
+        // await Amplify sign up
+        await authRepo.signUp(state.username, state.email, state.password);
+
+        yield state.copyWidth(formStatus: FormSubmissionSuccess());
+
+        // Show confirmation signup
+        authCubit.showConfirmSignUp(
+          username: state.username,
+          email: state.email,
+          password: state.password,
+        );
+      } catch (e) {
+        yield state.copyWidth(formStatus: FormSubmissionFailed());
+      }
+    }
+  }
+}
 
 // Auth Repository
 class AuthRepository {
@@ -433,6 +550,10 @@ class AuthRepository {
 
     throw Exception("Do not have an account yet, please sign up.");
     // return 'abc';
+  }
+
+  Future<void> signUp(String username, String email, String password) async {
+    await Future.delayed(Duration(seconds: 3));
   }
 }
 
