@@ -20,9 +20,11 @@ import 'ctg_view.dart';
 // CTG Each Minute App
 import 'ctg_realtime_cubit.dart';
 import 'ctg_realtime_view.dart';
+// Login
+import 'loginapp.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(LoginApp());
 }
 
 class MyApp extends StatefulWidget {
