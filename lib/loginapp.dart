@@ -24,16 +24,21 @@ class _LoginAppState extends State<LoginApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: MultiRepositoryProvider(
-          providers: [
-            RepositoryProvider(create: (context) => AuthRepository()),
-            RepositoryProvider(create: (context) => DataRepository()),
-          ],
-          child: MultiBlocProvider(
-            providers: [BlocProvider(create: (context) => AuthCubit())],
-            child: AuthNavigator(),
-          )),
-    );
+        home: _isAmplifyConfigured
+            ? MultiRepositoryProvider(
+                providers: [
+                    RepositoryProvider(create: (context) => AuthRepository()),
+                    RepositoryProvider(create: (context) => DataRepository()),
+                  ],
+                child: MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                        create: (context) => SessionCubit(
+                            authRepo: context.read<AuthRepository>()))
+                  ],
+                  child: AppNavigator(),
+                ))
+            : LoadingView());
   }
 
   // Configure Amplify
@@ -53,6 +58,48 @@ class _LoginAppState extends State<LoginApp> {
 }
 
 // AppNavigator View
+class AppNavigator extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SessionCubit, SessionState>(builder: (context, state) {
+      return Navigator(
+        pages: [
+          // Show loading screen
+          if (state is UnknownSessionState) MaterialPage(child: LoadingView()),
+
+          // Show auth flow
+          if (state is Unauthenticated)
+            MaterialPage(
+                child: BlocProvider(
+              create: (context) =>
+                  AuthCubit(sessionCubit: context.read<SessionCubit>()),
+              child: AuthNavigator(),
+            )),
+
+          // Show session flow
+          if (state is Authenticated)
+            MaterialPage(
+                child: SessionView(
+              username: state.user,
+            ))
+        ],
+        onPopPage: (route, result) => route.didPop(result),
+      );
+    });
+  }
+}
+
+// Loading View
+class LoadingView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+}
 
 // AuthNavigator View
 class AuthNavigator extends StatelessWidget {
@@ -122,23 +169,31 @@ class LoginView extends StatelessWidget {
   }
 
   Widget _usernameField() {
-    return TextFormField(
-      decoration: InputDecoration(
-        icon: Icon(Icons.person),
-        hintText: "Username",
-      ),
-      onChanged: (value) {},
-    );
+    return BlocBuilder<LoginBloc, LoginState>(builder: (context, state) {
+      return TextFormField(
+        decoration: InputDecoration(
+          icon: Icon(Icons.person),
+          hintText: "Username",
+        ),
+        onChanged: (value) {
+          context.read<LoginBloc>().add(LoginUsernameChanged(username: value));
+        },
+      );
+    });
   }
 
   Widget _passwordField() {
-    return TextFormField(
-      decoration: InputDecoration(
-        icon: Icon(Icons.security),
-        hintText: "Password",
-      ),
-      onChanged: (value) {},
-    );
+    return BlocBuilder<LoginBloc, LoginState>(builder: (context, state) {
+      return TextFormField(
+        decoration: InputDecoration(
+          icon: Icon(Icons.security),
+          hintText: "Password",
+        ),
+        onChanged: (value) {
+          context.read<LoginBloc>().add(LoginPasswordChanged(password: value));
+        },
+      );
+    });
   }
 
   Widget _loginButton() {
@@ -172,13 +227,78 @@ class LoginView extends StatelessWidget {
 
 // Confirmation SignUp View
 class ConfirmationView extends StatelessWidget {
+  final _formKey = GlobalKey<FormState>();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Confirmation"),
+      body: BlocProvider(
+        create: (context) => ConfirmationBloc(
+          authRepo: context.read<AuthRepository>(),
+          authCubit: context.read<AuthCubit>(),
+        ),
+        child: _confirmationForm(),
       ),
     );
+  }
+
+  Widget _confirmationForm() {
+    return BlocListener<ConfirmationBloc, ConfirmationState>(
+        listener: (context, state) {
+          final formStatus = state.formStatus;
+          if (formStatus is FormSubmissionFailed) {
+            _showSnackBar(context, formStatus.exception.toString());
+          }
+        },
+        child: Form(
+          key: _formKey,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _codeField(),
+                _confirmButton(),
+              ],
+            ),
+          ),
+        ));
+  }
+
+  Widget _codeField() {
+    return BlocBuilder<ConfirmationBloc, ConfirmationState>(
+        builder: (context, state) {
+      return TextFormField(
+        decoration: InputDecoration(
+          icon: Icon(Icons.person),
+          hintText: 'Confirmation Code',
+        ),
+        onChanged: (value) => context.read<ConfirmationBloc>().add(
+              ConfirmationCodeChanged(code: value),
+            ),
+      );
+    });
+  }
+
+  Widget _confirmButton() {
+    return BlocBuilder<ConfirmationBloc, ConfirmationState>(
+        builder: (context, state) {
+      return state.formStatus is FormSubmitting
+          ? CircularProgressIndicator()
+          : ElevatedButton(
+              onPressed: () {
+                if (_formKey.currentState.validate()) {
+                  context.read<ConfirmationBloc>().add(ConfirmationSubmitted());
+                }
+              },
+              child: Text('Confirm'),
+            );
+    });
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    final snackBar = SnackBar(content: Text(message));
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 }
 
@@ -208,17 +328,25 @@ class SignUpView extends StatelessWidget {
   }
 
   Widget _signUpForm() {
-    return Form(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _usernameField(),
-            _emailField(),
-            _passwordField(),
-            _singUpButton()
-          ],
+    return BlocListener<SignUpBloc, SignUpState>(
+      listener: (context, state) {
+        final formStatus = state.formStatus;
+        if (formStatus is FormSubmissionFailed) {
+          _showSnacBar(context, formStatus.exception.toString());
+        }
+      },
+      child: Form(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _usernameField(),
+              _emailField(),
+              _passwordField(),
+              _singUpButton()
+            ],
+          ),
         ),
       ),
     );
@@ -241,6 +369,7 @@ class SignUpView extends StatelessWidget {
   Widget _passwordField() {
     return BlocBuilder<SignUpBloc, SignUpState>(builder: (context, state) {
       return TextFormField(
+        obscureText: true,
         decoration:
             InputDecoration(icon: Icon(Icons.security), hintText: "Password"),
         onChanged: (value) {
@@ -284,7 +413,7 @@ class SignUpView extends StatelessWidget {
         child: Text('Already have an account? Sign in.'));
   }
 
-  Widget _showSnacBar(BuildContext context, String message) {
+  void _showSnacBar(BuildContext context, String message) {
     final snackBar = SnackBar(content: Text(message));
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
@@ -292,19 +421,28 @@ class SignUpView extends StatelessWidget {
 
 // Sesssion View
 class SessionView extends StatelessWidget {
+  final String username;
+
+  SessionView({Key key, this.username}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("SessionView"),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Hello $username'),
+            TextButton(
+              child: Text('sign out'),
+              onPressed: () => BlocProvider.of<SessionCubit>(context).signOut(),
+            )
+          ],
+        ),
       ),
     );
   }
 }
-
-// Session State
-
-// Session Cubit
 
 // Auth Credentials
 class AuthCredentials {
@@ -326,7 +464,8 @@ enum AuthState { login, signUp, confirmSignUp }
 
 // Auth Cubit
 class AuthCubit extends Cubit<AuthState> {
-  AuthCubit() : super(AuthState.login);
+  final SessionCubit sessionCubit;
+  AuthCubit({this.sessionCubit}) : super(AuthState.login);
 
   AuthCredentials credentials;
 
@@ -351,6 +490,7 @@ class AuthCubit extends Cubit<AuthState> {
 
   void launchSession(AuthCredentials credentials) {
     // Session Cubit show session
+    sessionCubit.showSession(credentials);
   }
 }
 
@@ -435,7 +575,13 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
 
       try {
         // Amplify login
-        final userId = await authRepo.login(state.username, state.password);
+        print(state.username);
+
+        final userId = await authRepo.login(
+            username: state.username, password: state.password);
+
+        print(userId);
+
         yield state.copyWith(formStatus: FormSubmissionSuccess());
 
         // Launch auth session from AuthCubit
@@ -514,9 +660,14 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
       yield state.copyWidth(username: event.username);
     }
 
-    // Password changed
+    // Email changed
     else if (event is SignUpEmailChanged) {
       yield state.copyWidth(email: event.email);
+    }
+
+    // Password changed
+    else if (event is SignUpPasswordChanged) {
+      yield state.copyWidth(password: event.password);
     }
 
     // Form submitted
@@ -526,7 +677,10 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
       // AuthRepository and Amplify sign up
       try {
         // await Amplify sign up
-        await authRepo.signUp(state.username, state.email, state.password);
+        await authRepo.signUp(
+            username: state.username,
+            email: state.email,
+            password: state.password);
 
         yield state.copyWidth(formStatus: FormSubmissionSuccess());
 
@@ -537,7 +691,7 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
           password: state.password,
         );
       } catch (e) {
-        yield state.copyWidth(formStatus: FormSubmissionFailed());
+        yield state.copyWidth(formStatus: FormSubmissionFailed(exception: e));
       }
     }
   }
@@ -545,17 +699,204 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
 
 // Auth Repository
 class AuthRepository {
-  Future<String> login(String username, String password) async {
-    await Future.delayed(Duration(seconds: 3));
-
-    throw Exception("Do not have an account yet, please sign up.");
-    // return 'abc';
+  Future<String> _getUserIdFromAttributes() async {
+    try {
+      final attributes = await Amplify.Auth.fetchUserAttributes();
+      final userId = attributes
+          .firstWhere((element) => element.userAttributeKey == 'sub')
+          .value;
+      return userId;
+    } catch (e) {
+      throw e;
+    }
   }
 
-  Future<void> signUp(String username, String email, String password) async {
-    await Future.delayed(Duration(seconds: 3));
+  Future<String> attemptAutoLogin() async {
+    try {
+      final session = await Amplify.Auth.fetchAuthSession();
+
+      return session.isSignedIn ? (await _getUserIdFromAttributes()) : null;
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  Future<String> login({
+    @required String username,
+    @required String password,
+  }) async {
+    try {
+      final result = await Amplify.Auth.signIn(
+        username: username.trim(),
+        password: password.trim(),
+      );
+
+      return result.isSignedIn ? (await _getUserIdFromAttributes()) : null;
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  Future<bool> signUp({
+    @required String username,
+    @required String email,
+    @required String password,
+  }) async {
+    final options =
+        CognitoSignUpOptions(userAttributes: {'email': email.trim()});
+    try {
+      final result = await Amplify.Auth.signUp(
+        username: username.trim(),
+        password: password.trim(),
+        options: options,
+      );
+      return result.isSignUpComplete;
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  Future<bool> confirmSignUp({
+    @required String username,
+    @required String confirmationCode,
+  }) async {
+    try {
+      final result = await Amplify.Auth.confirmSignUp(
+        username: username.trim(),
+        confirmationCode: confirmationCode.trim(),
+      );
+      return result.isSignUpComplete;
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  Future<void> signOut() async {
+    await Amplify.Auth.signOut();
   }
 }
 
 // Data Repository
 class DataRepository {}
+
+// Confirmation State
+class ConfirmationState {
+  final String code;
+  final FormSubmissionStatus formStatus;
+
+  ConfirmationState({
+    this.code = '',
+    this.formStatus = const InitialFormStatus(),
+  });
+
+  ConfirmationState copyWidth({
+    String code,
+    FormSubmissionStatus formStatus,
+  }) {
+    return ConfirmationState(
+      code: code ?? this.code,
+      formStatus: formStatus ?? this.formStatus,
+    );
+  }
+}
+
+// Confirmation Event
+abstract class ConfirmationEvent {}
+
+class ConfirmationCodeChanged extends ConfirmationEvent {
+  final String code;
+  ConfirmationCodeChanged({this.code});
+}
+
+class ConfirmationSubmitted extends ConfirmationEvent {}
+
+// Confirmation Bloc
+class ConfirmationBloc extends Bloc<ConfirmationEvent, ConfirmationState> {
+  final AuthRepository authRepo;
+  final AuthCubit authCubit;
+
+  ConfirmationBloc({this.authRepo, this.authCubit})
+      : super(ConfirmationState());
+
+  @override
+  Stream<ConfirmationState> mapEventToState(ConfirmationEvent event) async* {
+    // Confirmation code updated
+    if (event is ConfirmationCodeChanged) {
+      yield state.copyWidth(code: event.code);
+    }
+
+    // Form submitted
+    else if (event is ConfirmationSubmitted) {
+      yield state.copyWidth(formStatus: FormSubmitting());
+
+      try {
+        // TODO: AuthRepository to confirm signUp
+        await authRepo.confirmSignUp(
+            username: authCubit.credentials.username,
+            confirmationCode: state.code);
+
+        yield state.copyWidth(formStatus: FormSubmissionSuccess());
+
+        // Setup credential
+        final credentials = authCubit.credentials;
+        final userId = await authRepo.login(
+            username: credentials.username, password: credentials.password);
+        credentials.userId = userId;
+
+        // AuthCubit launch session with credential
+        authCubit.launchSession(credentials);
+      } catch (e) {
+        print(e);
+        yield state.copyWidth(formStatus: FormSubmissionFailed(exception: e));
+      }
+    }
+
+    // Confirm SinUp
+  }
+}
+
+// Session Cubit
+class SessionCubit extends Cubit<SessionState> {
+  final AuthRepository authRepo;
+
+  SessionCubit({this.authRepo}) : super(UnknownSessionState()) {
+    attemptAutoLogin();
+  }
+
+  void attemptAutoLogin() async {
+    try {
+      final userId = await authRepo.attemptAutoLogin();
+      // final user = dataRepo.getUser(userId);
+      final user = userId;
+      emit(Authenticated(user: user));
+    } on Exception {
+      emit(Unauthenticated());
+    }
+  }
+
+  void showAuth() => emit(Unauthenticated());
+
+  void showSession(AuthCredentials credentials) {
+    // final user = dataRepo.getUser(credentials.userId);
+    final user = credentials.username;
+    emit(Authenticated(user: user));
+  }
+
+  void signOut() {
+    authRepo.signOut();
+    emit(Unauthenticated());
+  }
+}
+
+// Session State
+abstract class SessionState {}
+
+class UnknownSessionState extends SessionState {}
+
+class Unauthenticated extends SessionState {}
+
+class Authenticated extends SessionState {
+  final dynamic user;
+
+  Authenticated({@required this.user});
+}
