@@ -13,7 +13,8 @@ This project is a starting point for a Flutter application.
 
 ### 1. Authentication and Fetch Records Per UserId
 - User authentication using Amplify Cognito
-- User session 
+- User session
+
 ![Screen-Recording-2021-03-23-at-4](https://user-images.githubusercontent.com/20411077/112128643-35c2ab80-8bf9-11eb-8c6c-ad64d3b16958.gif)
 
 ### 234. Working With AWS Backend 
