@@ -1040,7 +1040,7 @@ class UserHistoricalView extends StatelessWidget {
                     return Card(
                       child: ListTile(
                           title: Text(
-                              "Record Id: ${state.ctgs[index].id} mHR: ${state.ctgs[index].mHR} fHR: ${state.ctgs[index].fHR} acel: ${state.ctgs[index].acelsTime} decel: ${state.ctgs[index].decelsTime}")),
+                              "username: ${state.ctgs[index].username} record Id: ${state.ctgs[index].id} mHR: ${state.ctgs[index].mHR} fHR: ${state.ctgs[index].fHR} acel: ${state.ctgs[index].acelsTime} decel: ${state.ctgs[index].decelsTime}")),
                     );
                   });
             }
