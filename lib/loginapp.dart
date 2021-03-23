@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +36,8 @@ class _LoginAppState extends State<LoginApp> {
                   providers: [
                     BlocProvider(
                         create: (context) => SessionCubit(
-                            authRepo: context.read<AuthRepository>()))
+                            authRepo: context.read<AuthRepository>(),
+                            dataPepo: context.read<DataRepository>()))
                   ],
                   child: AppNavigator(),
                 ))
@@ -80,7 +83,7 @@ class AppNavigator extends StatelessWidget {
           if (state is Authenticated)
             MaterialPage(
                 child: SessionView(
-              username: state.user,
+              user: state.user,
             ))
         ],
         onPopPage: (route, result) => route.didPop(result),
@@ -421,25 +424,27 @@ class SignUpView extends StatelessWidget {
 
 // Sesssion View
 class SessionView extends StatelessWidget {
-  final String username;
+  final User user;
 
-  SessionView({Key key, this.username}) : super(key: key);
+  SessionView({Key key, this.user}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Hello $username'),
-            TextButton(
-              child: Text('sign out'),
-              onPressed: () => BlocProvider.of<SessionCubit>(context).signOut(),
-            )
-          ],
-        ),
-      ),
+      body: SafeArea(
+          child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          Center(
+            child: Text("Hello ${user.username} ${user.description}"),
+          ),
+          TextButton(
+              onPressed: () {
+                BlocProvider.of<SessionCubit>(context).signOut();
+              },
+              child: Text('Sign Out')),
+        ],
+      )),
     );
   }
 }
@@ -575,12 +580,12 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
 
       try {
         // Amplify login
-        print(state.username);
+        // print(state.username);
 
         final userId = await authRepo.login(
             username: state.username, password: state.password);
 
-        print(userId);
+        // print(userId);
 
         yield state.copyWith(formStatus: FormSubmissionSuccess());
 
@@ -776,8 +781,76 @@ class AuthRepository {
   }
 }
 
+// User Model
+class User {
+  final String id;
+  final String username;
+  final String email;
+  final String avatarkey;
+  final String description;
+
+  User({this.id, this.username, this.email, this.avatarkey, this.description});
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+        id: json['id'],
+        username: json['username'],
+        email: json['email'],
+        avatarkey: json['avatarKey'],
+        description: json['description']);
+  }
+}
+
 // Data Repository
-class DataRepository {}
+class DataRepository {
+  // Query DB to get user by userId
+  Future<User> getUserById(String userId) async {
+    print("trying to get user from db");
+
+    try {
+      String graphQLDocument = '''query getUser {
+      getUser(id: "a55e8605-96ba-41ed-a914-58655ab2861e") {
+        email
+        id
+        description
+        username
+        avatarKey
+      }
+    }''';
+
+      var operation = Amplify.API
+          .query(request: GraphQLRequest<String>(document: graphQLDocument));
+
+      var response = await operation.response;
+      var json = jsonDecode(response.data.toString())['getUser'];
+      print(json);
+      return User.fromJson(json);
+    } catch (e) {
+      print(e);
+    }
+
+    return User(
+        id: '', username: '', email: '', avatarkey: '', description: '');
+  }
+
+  // Mutation to create a new user
+  Future<User> createUser({
+    String userId,
+    String username,
+    String email,
+  }) async {
+    final newUser = User(
+        id: userId,
+        username: username,
+        email: email,
+        avatarkey: '',
+        description: '');
+
+    await Future.delayed(Duration(seconds: 3));
+    print("create user into DB");
+    return newUser;
+  }
+}
 
 // Confirmation State
 class ConfirmationState {
@@ -858,16 +931,30 @@ class ConfirmationBloc extends Bloc<ConfirmationEvent, ConfirmationState> {
 // Session Cubit
 class SessionCubit extends Cubit<SessionState> {
   final AuthRepository authRepo;
+  final DataRepository dataPepo;
 
-  SessionCubit({this.authRepo}) : super(UnknownSessionState()) {
+  SessionCubit({this.authRepo, this.dataPepo}) : super(UnknownSessionState()) {
     attemptAutoLogin();
   }
 
   void attemptAutoLogin() async {
+    print("Attemp auto login");
+
     try {
       final userId = await authRepo.attemptAutoLogin();
-      // final user = dataRepo.getUser(userId);
-      final user = userId;
+
+      if (userId == null) {
+        throw Exception("User not logged in");
+      }
+
+      // Get user from DB given userId
+      User user = await dataPepo.getUserById(userId);
+      if (user == null) {
+        user = await dataPepo.createUser(
+          userId: userId,
+          username: 'User-${UUID()}',
+        );
+      }
       emit(Authenticated(user: user));
     } on Exception {
       emit(Unauthenticated());
@@ -876,10 +963,30 @@ class SessionCubit extends Cubit<SessionState> {
 
   void showAuth() => emit(Unauthenticated());
 
-  void showSession(AuthCredentials credentials) {
+  void showSession(AuthCredentials credentials) async {
+    try {
+      User user = await dataPepo.getUserById(credentials.userId);
+      if (user == null) {
+        user = await dataPepo.createUser(
+          userId: credentials.userId,
+          username: credentials.username,
+          email: credentials.email,
+        );
+      }
+
+      emit(Authenticated(user: user));
+    } catch (e) {
+      emit(Unauthenticated());
+    }
+
     // final user = dataRepo.getUser(credentials.userId);
-    final user = credentials.username;
-    emit(Authenticated(user: user));
+    emit(Authenticated(
+        user: User(
+            id: credentials.userId,
+            username: credentials.username,
+            email: credentials.email,
+            avatarkey: '',
+            description: '')));
   }
 
   void signOut() {
@@ -896,7 +1003,7 @@ class UnknownSessionState extends SessionState {}
 class Unauthenticated extends SessionState {}
 
 class Authenticated extends SessionState {
-  final dynamic user;
+  final User user;
 
   Authenticated({@required this.user});
 }
