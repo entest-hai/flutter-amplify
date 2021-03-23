@@ -190,6 +190,7 @@ class LoginView extends StatelessWidget {
   Widget _passwordField() {
     return BlocBuilder<LoginBloc, LoginState>(builder: (context, state) {
       return TextFormField(
+        obscureText: true,
         decoration: InputDecoration(
           icon: Icon(Icons.security),
           hintText: "Password",

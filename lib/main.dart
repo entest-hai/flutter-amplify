@@ -24,7 +24,7 @@ import 'ctg_realtime_view.dart';
 import 'loginapp.dart';
 
 void main() {
-  runApp(LoginApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -67,7 +67,7 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _amplifyConfigured = true;
       });
-    } catch (e) { 
+    } catch (e) {
       print(e.toString());
     }
   }

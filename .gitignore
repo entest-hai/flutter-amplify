@@ -46,6 +46,8 @@ app.*.map.json
 /android/app/release
 
 #amplify
+/amplify
+amplify/
 amplify/\#current-cloud-backend
 amplify/.config/local-*
 amplify/logs
