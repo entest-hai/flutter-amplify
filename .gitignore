@@ -45,6 +45,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# data 
+flutteramplify32917a364a1942d5b5203a9c772381ec102628-dev/
+
+
 #amplify
 /amplify
 amplify/
