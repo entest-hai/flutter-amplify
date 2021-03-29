@@ -94,8 +94,6 @@ class _MultipleCTGState extends State<MultipleCTGView> {
                         onChanged: (value) {
                           print("on change $value");
                         },
-                        acels: macels,
-                        decels: mdecels,
                       );
                     }
                     return Center(
@@ -200,8 +198,6 @@ class _HistoricalCTGState extends State<HistoricalCTGView> {
                       onChanged: (value) {
                         print("on change $value");
                       },
-                      acels: macels,
-                      decels: mdecels,
                     );
                   }
                   return Center(

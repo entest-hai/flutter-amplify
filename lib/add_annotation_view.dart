@@ -47,7 +47,7 @@ class AddAnnotationView extends StatelessWidget {
       onChanged: (value) {
         // Todo: cubit update form
         BlocProvider.of<FormCubit>(context).updateStartTime(value);
-        print(value);
+        // print(value);
       },
     );
   }
@@ -60,7 +60,7 @@ class AddAnnotationView extends StatelessWidget {
         // Todo: cubit update form
         BlocProvider.of<FormCubit>(context)
             .updateDuration(double.parse('$value'));
-        print(value);
+        // print(value);
       },
     );
   }
@@ -71,7 +71,7 @@ class AddAnnotationView extends StatelessWidget {
       onChanged: (value) {
         // Todo: cubit update form
         BlocProvider.of<FormCubit>(context).updateDescription(value);
-        print(value);
+        // print(value);
       },
     );
   }

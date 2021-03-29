@@ -50,6 +50,8 @@ class AnnotationCubit extends Cubit<AnnotationState> {
         duration: annotation.duration);
     _accels.add(acel);
 
+    // create decel
+
     // update state
     emit(AnnotationAdded(
         mHR: _mHR,
@@ -57,14 +59,6 @@ class AnnotationCubit extends Cubit<AnnotationState> {
         accels: _accels,
         decels: _decels,
         annotations: _annotations));
-
-    emit(AnnotationLoadedHeartRate(
-        mHR: _mHR,
-        fHR: _fHR,
-        accels: _accels,
-        decels: _decels,
-        annotations: _annotations));
   }
-
   //
 }

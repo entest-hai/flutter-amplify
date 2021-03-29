@@ -46,8 +46,8 @@ class CustomSliderApp extends StatelessWidget {
           onChanged: (value) {
             print("on change $value");
           },
-          acels: macels,
-          decels: mdecels,
+          // acels: macels,
+          // decels: mdecels,
         ),
       ),
     ));
@@ -56,8 +56,8 @@ class CustomSliderApp extends StatelessWidget {
 
 // Slidding Window and ACC Mark Painter
 class CustomSliderView extends StatefulWidget {
-  final List<Acceleration> acels;
-  final List<Deceleration> decels;
+  // final List<Acceleration> acels;
+  // final List<Deceleration> decels;
   final int numMinute;
   final double sliderWidth;
   final double sliderHeight;
@@ -67,8 +67,8 @@ class CustomSliderView extends StatefulWidget {
   final ValueChanged<double> onChangeEnd;
 
   CustomSliderView({
-    this.acels,
-    this.decels,
+    // this.acels,
+    // this.decels,
     this.numMinute = 60,
     this.sliderWidth = 400.0,
     this.sliderHeight = 45.0,
@@ -131,6 +131,22 @@ class _CustomSliderState extends State<CustomSliderView> {
                 size: Size(MediaQuery.of(context).size.width * 6, 300),
               ),
             );
+          } else if (state is AnnotationAdded) {
+            print(state.accels.length);
+            return SingleChildScrollView(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              child: CustomPaint(
+                // painter: CTGGridPainterTest(),
+                painter: ACCGridPainter(
+                    numMinuteLine: 60,
+                    acels: state.accels,
+                    decels: state.decels,
+                    mHR: state.mHR,
+                    fHR: state.fHR),
+                size: Size(MediaQuery.of(context).size.width * 6, 300),
+              ),
+            );
           } else {
             return Container(
               child: Center(
@@ -139,40 +155,54 @@ class _CustomSliderState extends State<CustomSliderView> {
             );
           }
         }),
-        GestureDetector(
-          child: Stack(
-            children: [
-              CustomPaint(
-                painter: SliderPainter(
-                    width: widget.sliderWidth / widget.numMinute * 10,
-                    height: widget.sliderHeight + 6,
-                    margin: 3,
-                    maxWidth: widget.sliderWidth,
-                    color: Colors.blue,
-                    dragPercentage: _dragPercentage,
-                    sliderPosition: _dragPosition),
-              ),
-              CustomPaint(
-                painter: CTGPainter(
-                    acels: widget.acels,
-                    decels: widget.decels,
-                    numMinute: widget.numMinute,
-                    width: widget.sliderWidth,
-                    height: widget.sliderHeight),
-              ),
-              Container(
-                color: Colors.grey.withOpacity(0.1),
-                height: widget.sliderHeight,
-                width: widget.sliderWidth,
-              ),
-            ],
-          ),
-          onHorizontalDragUpdate: (DragUpdateDetails update) =>
-              _onDragUpdate(context, update),
-          onHorizontalDragStart: (DragStartDetails start) =>
-              _onDragStart(context, start),
-          onHorizontalDragEnd: (DragEndDetails end) => _onDragEnd(context, end),
-        ),
+        BlocBuilder<AnnotationCubit, AnnotationState>(
+            builder: (context, state) {
+          return GestureDetector(
+            child: Stack(
+              children: [
+                CustomPaint(
+                  painter: SliderPainter(
+                      width: widget.sliderWidth / widget.numMinute * 10,
+                      height: widget.sliderHeight + 6,
+                      margin: 3,
+                      maxWidth: widget.sliderWidth,
+                      color: Colors.blue,
+                      dragPercentage: _dragPercentage,
+                      sliderPosition: _dragPosition),
+                ),
+                if (state is AnnotationAdded)
+                  CustomPaint(
+                    painter: CTGPainter(
+                        acels: state.accels,
+                        decels: state.decels,
+                        numMinute: widget.numMinute,
+                        width: widget.sliderWidth,
+                        height: widget.sliderHeight),
+                  )
+                else
+                  CustomPaint(
+                    painter: CTGPainter(
+                        acels: [],
+                        decels: [],
+                        numMinute: widget.numMinute,
+                        width: widget.sliderWidth,
+                        height: widget.sliderHeight),
+                  ),
+                Container(
+                  color: Colors.grey.withOpacity(0.1),
+                  height: widget.sliderHeight,
+                  width: widget.sliderWidth,
+                ),
+              ],
+            ),
+            onHorizontalDragUpdate: (DragUpdateDetails update) =>
+                _onDragUpdate(context, update),
+            onHorizontalDragStart: (DragStartDetails start) =>
+                _onDragStart(context, start),
+            onHorizontalDragEnd: (DragEndDetails end) =>
+                _onDragEnd(context, end),
+          );
+        })
       ],
     );
   }
@@ -319,8 +349,8 @@ class CTGPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
+  bool shouldRepaint(CTGPainter oldDelegate) {
+    return (acels != oldDelegate.acels) || (decels != oldDelegate.decels);
   }
 }
 
@@ -492,7 +522,9 @@ class ACCGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(ACCGridPainter oldDelegate) => false;
+  bool shouldRepaint(ACCGridPainter oldDelegate) {
+    return true;
+  }
 }
 
 // Accel and Decel Model
