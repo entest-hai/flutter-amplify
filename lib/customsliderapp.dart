@@ -523,6 +523,7 @@ class ACCGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(ACCGridPainter oldDelegate) {
+    print("repaint now");
     return true;
   }
 }

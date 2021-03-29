@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 // annotation cubit
 import 'annotation_cubit.dart';
 import 'annotation_state.dart';
+// date format
+import 'package:intl/intl.dart';
 
 class AnnotationTableView extends StatelessWidget {
   const AnnotationTableView({
@@ -28,7 +30,7 @@ class AnnotationTableView extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  "Time",
+                                  "TimeStamp",
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 Text(
@@ -39,14 +41,17 @@ class AnnotationTableView extends StatelessWidget {
                                   "Time",
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
-                                Text("    ")
+                                Text(
+                                  "Status",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                )
                               ],
                             )
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                  Text(
-                                      "${state.annotations[index - 1].startTime}"),
+                                  Text(DateFormat("HH:mm:ss").format(
+                                      state.annotations[index - 1].timestamp)),
                                   Text(
                                       "${state.annotations[index - 1].duration}"),
                                   Text(

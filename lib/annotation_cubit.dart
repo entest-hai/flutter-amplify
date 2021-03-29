@@ -16,6 +16,7 @@ class AnnotationCubit extends Cubit<AnnotationState> {
   List<Deceleration> _decels = [];
   List<double> _mHR = [];
   List<double> _fHR = [];
+  var timestamp = DateTime.now();
 
   // Constructor
   AnnotationCubit({
@@ -42,7 +43,19 @@ class AnnotationCubit extends Cubit<AnnotationState> {
 
   // Clinican add an annotation
   void addAnnotation(Annotation annotation) {
-    _annotations.add(annotation);
+    // Calculate timestamp
+    if (_annotations.length > 0) {
+      timestamp = timestamp
+          .add(Duration(seconds: (annotation.duration * 60.0).round()));
+    }
+
+    final newAnnotation = Annotation(
+      timestamp: timestamp,
+      startTime: annotation.startTime,
+      duration: annotation.duration,
+    );
+
+    _annotations.add(newAnnotation);
 
     // create accel
     final acel = Acceleration(
