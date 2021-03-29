@@ -22,9 +22,13 @@ import 'ctg_realtime_cubit.dart';
 import 'ctg_realtime_view.dart';
 // Login
 import 'loginapp.dart';
+// Annotation
+import 'annotation_app.dart';
+// Historical CTG
 
 void main() {
-  runApp(MyApp());
+  // runApp(LoginApp());
+  runApp(AnnotationApp());
 }
 
 class MyApp extends StatefulWidget {
