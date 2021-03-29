@@ -25,10 +25,13 @@ import 'loginapp.dart';
 // Annotation
 import 'annotation_app.dart';
 // Historical CTG
+import 'user_historical_app.dart';
 
 void main() {
+  // runApp(MyApp());
   // runApp(LoginApp());
-  runApp(AnnotationApp());
+  // runApp(AnnotationApp());
+  runApp(HistoricalCTGApp());
 }
 
 class MyApp extends StatefulWidget {
