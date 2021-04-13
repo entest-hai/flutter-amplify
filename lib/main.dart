@@ -26,12 +26,15 @@ import 'loginapp.dart';
 import 'annotation_app.dart';
 // Historical CTG
 import 'user_historical_app.dart';
+// S3 App 
+import 's3/s3_list_files_app.dart';
 
 void main() {
   // runApp(MyApp());
   // runApp(LoginApp());
   // runApp(AnnotationApp());
-  runApp(HistoricalCTGApp());
+  // runApp(HistoricalCTGApp());
+  runApp(S3App());
 }
 
 class MyApp extends StatefulWidget {
