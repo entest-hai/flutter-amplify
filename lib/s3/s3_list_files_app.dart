@@ -13,6 +13,7 @@ import 's3_list_files_state.dart';
 // Detail File Cubit and State
 import 's3_detail_file_cubit.dart';
 import 's3_detail_file_state.dart';
+import 'package:photo_view/photo_view.dart';
 
 class S3App extends StatelessWidget {
   @override
@@ -143,18 +144,7 @@ class DetailFileView extends StatelessWidget {
              child: CircularProgressIndicator(),
            );
          } else if (state is FetchedS3DetailFileStateSuccess){
-           return Image.network(state.s3detailFile.url.url,
-             loadingBuilder:(BuildContext context, Widget child,ImageChunkEvent loadingProgress) {
-               if (loadingProgress == null) return child;
-               return Center(
-                 child: CircularProgressIndicator(
-                   value: loadingProgress.expectedTotalBytes != null ?
-                   loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes
-                       : null,
-                 ),
-               );
-             },
-           );
+           return PhotoView(imageProvider: NetworkImage(state.s3detailFile.url.url));
          } else {
            return Text("No Image");
          };

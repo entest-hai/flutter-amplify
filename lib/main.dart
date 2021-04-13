@@ -28,6 +28,8 @@ import 'annotation_app.dart';
 import 'user_historical_app.dart';
 // S3 App 
 import 's3/s3_list_files_app.dart';
+// S3 image view app
+import 's3/s3_image_view.dart';
 
 void main() {
   // runApp(MyApp());
@@ -35,7 +37,10 @@ void main() {
   // runApp(AnnotationApp());
   // runApp(HistoricalCTGApp());
   runApp(S3App());
+  // runApp(S3PhotoViewApp());
+
 }
+
 
 class MyApp extends StatefulWidget {
   @override
