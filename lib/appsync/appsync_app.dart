@@ -52,6 +52,7 @@ class AppSyncListView extends StatefulWidget {
 }
 
 class _AppSyncState extends State<AppSyncListView> {
+  bool _hasReachMax = true;
   bool _amplifyConfigured = false;
   final _scrollController = ScrollController();
 
@@ -115,9 +116,10 @@ class _AppSyncState extends State<AppSyncListView> {
     final minScroll = _scrollController.position.minScrollExtent;
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
-    // print("$minScroll $currentScroll $maxScroll");
     if (maxScroll == currentScroll) {
-      // BlocProvider.of<AppSyncCTGCubit>(context).fetchCTG();
+      if (!BlocProvider.of<AppSyncCTGCubit>(context).state.isFetchingMore){
+        BlocProvider.of<AppSyncCTGCubit>(context).fetchCTG();
+      }
     }
   }
 
@@ -151,7 +153,6 @@ class _AppSyncFileState extends State<AppSyncFileDetailView> {
   @override
   void initState() {
     super.initState();
-
     BlocProvider.of<AppSyncItemCubit>(context).fetchCtgUrl(widget.ctg);
   }
 

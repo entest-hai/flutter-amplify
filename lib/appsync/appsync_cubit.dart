@@ -8,9 +8,9 @@ class AppSyncCTGCubit extends Cubit<AppSyncCTGState> {
   AppSyncCTGCubit() : super(AppSyncCTGState(isFetching: false, isFetchSuccess: false, ctgs: []));
 
   Future<void> fetchCTG() async {
-
     // first time fetch data
     if (this.appSyncRepository.records.length == 0){
+      print("first time fetch");
       emit(
           AppSyncCTGState(
             isFetchingMore: false,
@@ -20,6 +20,7 @@ class AppSyncCTGCubit extends Cubit<AppSyncCTGState> {
           )
       );
     } else {
+      print("fetch more data");
       emit(
           AppSyncCTGState(
             isFetchingMore: true,
