@@ -58,8 +58,8 @@ flutter:
   assets:
     - assets/mheartrate.txt
     - assets/fheartrate.txt
-    - images
-    - images/1004.csv.png
+    - assets/images/1004.csv.png
+    - assets/images/whale.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

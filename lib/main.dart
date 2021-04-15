@@ -30,14 +30,17 @@ import 'user_historical_app.dart';
 import 's3/s3_list_files_app.dart';
 // S3 image view app
 import 's3/s3_image_view.dart';
+// AppSyncApp
+import 'appsync/appsync_app.dart';
 
 void main() {
   // runApp(MyApp());
   // runApp(LoginApp());
   // runApp(AnnotationApp());
   // runApp(HistoricalCTGApp());
-  runApp(S3App());
+  // runApp(S3App());
   // runApp(S3PhotoViewApp());
+  runApp(AppSyncApp());
 
 }
 
