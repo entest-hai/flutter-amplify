@@ -52,16 +52,17 @@ class AppSyncListView extends StatefulWidget {
 }
 
 class _AppSyncState extends State<AppSyncListView> {
-
   bool _amplifyConfigured = false;
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      _onScroll();
+    });
     _configureAmplify();
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -75,14 +76,18 @@ class _AppSyncState extends State<AppSyncListView> {
         ],
       ),
       body: BlocBuilder<AppSyncCTGCubit, AppSyncCTGState>(builder: (context, state){
-
         if (state.isFetchSuccess) {
-          return ListView.builder(
-            itemCount: state.ctgs.length,
-            itemBuilder: (context, index){
-              return _buildCTGCard(state.ctgs[index]);
-            },
-          );
+          return Column(children: [
+            Expanded(child:  ListView.builder(
+              controller: _scrollController,
+              itemCount: state.ctgs.length,
+              itemBuilder: (context, index){
+                return _buildCTGCard(state.ctgs[index]);
+              },
+            )
+            ),
+            Center(child: state.isFetchingMore ? CircularProgressIndicator() : Container(),)
+          ],);
         } else if (state.isFetching){
           return Center(child: CircularProgressIndicator(),);
         } else {
@@ -96,7 +101,7 @@ class _AppSyncState extends State<AppSyncListView> {
     return Card(
       child: ListTile(
         leading: Icon(Icons.image, color: Colors.purple,),
-        title: Text("${ctg.ctgUrl} ${ctg.createdAt}"),
+        title: Text("name: ${ctg.ctgUrl.split("/").last} at ${ctg.createdAt.split(":").first}"),
         onTap: (){
           Navigator.push(context, MaterialPageRoute(builder: (context) => AppSyncFileDetailView(
             ctg: ctg,
@@ -104,6 +109,16 @@ class _AppSyncState extends State<AppSyncListView> {
         },
       ),
     );
+  }
+
+  void _onScroll() {
+    final minScroll = _scrollController.position.minScrollExtent;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    // print("$minScroll $currentScroll $maxScroll");
+    if (maxScroll == currentScroll) {
+      // BlocProvider.of<AppSyncCTGCubit>(context).fetchCTG();
+    }
   }
 
   void _configureAmplify() async {
@@ -125,7 +140,6 @@ class _AppSyncState extends State<AppSyncListView> {
 class AppSyncFileDetailView extends StatefulWidget {
   final CTGRecordModel ctg;
   AppSyncFileDetailView({this.ctg});
-
   @override
   State<StatefulWidget> createState() {
     return _AppSyncFileState();

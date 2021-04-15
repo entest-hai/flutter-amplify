@@ -4,26 +4,39 @@ import 'appsync_state.dart';
 import 'appsync_repository.dart';
 
 class AppSyncCTGCubit extends Cubit<AppSyncCTGState> {
-  AppSyncRepository appSyncRepository = AppSyncRepository();
+  AppSyncRepository appSyncRepository = AppSyncRepository(records: []);
   AppSyncCTGCubit() : super(AppSyncCTGState(isFetching: false, isFetchSuccess: false, ctgs: []));
 
   Future<void> fetchCTG() async {
+
+    // first time fetch data
+    if (this.appSyncRepository.records.length == 0){
+      emit(
+          AppSyncCTGState(
+            isFetchingMore: false,
+            isFetching: true,
+            isFetchSuccess: false,
+            ctgs: this.appSyncRepository.records,
+          )
+      );
+    } else {
+      emit(
+          AppSyncCTGState(
+            isFetchingMore: true,
+            isFetching: false,
+            isFetchSuccess: true,
+            ctgs: this.appSyncRepository.records,
+          )
+      );
+    }
+
+    await this.appSyncRepository.getCTGs();
     emit(
       AppSyncCTGState(
-        isFetching: true,
-        isFetchSuccess: false,
-        ctgs: []
-      )
-    );
-
-    // Graphql queries to list all ctg records from DDB
-    final ctgs =  await appSyncRepository.fetchCTGs();
-
-    emit(
-      AppSyncCTGState(
+        isFetchingMore: false,
         isFetching: false,
         isFetchSuccess: true,
-        ctgs: ctgs
+        ctgs: this.appSyncRepository.records,
       )
     );
   }
