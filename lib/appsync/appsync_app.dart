@@ -95,7 +95,8 @@ class _AppSyncState extends State<AppSyncListView> {
   Card _buildCTGCard(CTGRecordModel ctg){
     return Card(
       child: ListTile(
-        title: Text("${ctg.username} ${ctg.ctgUrl} ${ctg.createdAt}"),
+        leading: Icon(Icons.image, color: Colors.purple,),
+        title: Text("${ctg.ctgUrl} ${ctg.createdAt}"),
         onTap: (){
           Navigator.push(context, MaterialPageRoute(builder: (context) => AppSyncFileDetailView(
             ctg: ctg,
@@ -143,7 +144,7 @@ class _AppSyncFileState extends State<AppSyncFileDetailView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Detail ${widget.ctg.username}"),),
+      appBar: AppBar(title: Text("Detail"),),
       body: SafeArea(
         child: BlocBuilder<AppSyncItemCubit, AppSyncItemState>(builder: (context, state){
           return Center(

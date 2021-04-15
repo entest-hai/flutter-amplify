@@ -8,7 +8,7 @@ class AppSyncItemCubit extends Cubit<AppSyncItemState>{
   AppSyncItemCubit() : super(AppSyncItemState(ctgUrl: null));
 
   Future<void> fetchCtgUrl(CTGRecordModel ctg) async {
-    final String key = "ctg/1004.csv.png";
+    final String key = "ctg/" + ctg.ctgUrl.split("/").last;
     final StorageItem item = StorageItem(key: key);
     GetUrlResult url =  await Amplify.Storage.getUrl(key: item.key);
     emit(AppSyncItemState(ctgUrl: url.url));

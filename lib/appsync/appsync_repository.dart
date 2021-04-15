@@ -10,7 +10,7 @@ class AppSyncRepository {
 
     try {
       String graphQLDocument = '''query listCTGs {
-      listCTGs {
+      listCTGs(limit : 100) {
         items {
           ctgUrl
           username
@@ -38,9 +38,8 @@ class AppSyncRepository {
 
     var response = await operation.response;
     var items = jsonDecode(response.data.toString())['listCTGs']['items'];
+    print(items.length);
     for (var item in items) {
-      // print(item.toString());
-
       records.add(
         CTGRecordModel.fromJson(item)
       );
