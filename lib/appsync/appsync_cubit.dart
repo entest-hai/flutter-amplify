@@ -7,6 +7,11 @@ class AppSyncCTGCubit extends Cubit<AppSyncCTGState> {
   AppSyncRepository appSyncRepository = AppSyncRepository(records: []);
   AppSyncCTGCubit() : super(AppSyncCTGState(isFetching: false, isFetchSuccess: false, ctgs: []));
 
+  Future<void> fetchFirstTimeCTG() async {
+    await fetchCTG();
+    await fetchCTG();
+  }
+
   Future<void> fetchCTG() async {
     // first time fetch data
     if (this.appSyncRepository.records.length == 0){

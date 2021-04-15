@@ -21,7 +21,7 @@ class AppSyncApp extends StatelessWidget {
     return MaterialApp(
       home: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (context) => AppSyncCTGCubit()),
+          BlocProvider(create: (context) => AppSyncCTGCubit()..fetchFirstTimeCTG()),
           BlocProvider(create: (context) => AppSyncItemCubit()),
         ],
         child: AppSyncNav(),
