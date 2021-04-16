@@ -14,6 +14,8 @@ import 'appsync_ctg_model.dart';
 import 'appsync_item_cubit.dart';
 import 'appsync_item_state.dart';
 import 'package:photo_view/photo_view.dart';
+// AppSyncSearch
+import 'app_sync_search.dart';
 
 class AppSyncApp extends StatelessWidget {
   @override
@@ -21,7 +23,7 @@ class AppSyncApp extends StatelessWidget {
     return MaterialApp(
       home: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (context) => AppSyncCTGCubit()..fetchFirstTimeCTG()),
+          BlocProvider(create: (context) => AppSyncCTGCubit()),
           BlocProvider(create: (context) => AppSyncItemCubit()),
         ],
         child: AppSyncNav(),
@@ -35,7 +37,7 @@ class AppSyncNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Navigator(
       pages: [
-        MaterialPage(child: AppSyncListView())
+        MaterialPage(child: AppSyncSearchView())
       ],
       onPopPage: (result, route){
         route.didPop(result);
@@ -45,6 +47,10 @@ class AppSyncNav extends StatelessWidget {
 }
 
 class AppSyncListView extends StatefulWidget {
+
+  final String dataset;
+  AppSyncListView({this.dataset});
+
   @override
   State<StatefulWidget> createState() {
     return _AppSyncState();
@@ -62,20 +68,12 @@ class _AppSyncState extends State<AppSyncListView> {
     _scrollController.addListener(() {
       _onScroll();
     });
-    _configureAmplify();
+    // _configureAmplify();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("AppSync"),
-        actions: [
-          ElevatedButton(onPressed: (){
-            BlocProvider.of<AppSyncCTGCubit>(context).fetchCTG();
-          }, child: Icon(Icons.download_sharp))
-        ],
-      ),
       body: BlocBuilder<AppSyncCTGCubit, AppSyncCTGState>(builder: (context, state){
         if (state.isFetchSuccess) {
           return Column(children: [
@@ -113,12 +111,11 @@ class _AppSyncState extends State<AppSyncListView> {
   }
 
   void _onScroll() {
-    final minScroll = _scrollController.position.minScrollExtent;
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
     if (maxScroll == currentScroll) {
       if (!BlocProvider.of<AppSyncCTGCubit>(context).state.isFetchingMore){
-        BlocProvider.of<AppSyncCTGCubit>(context).fetchCTG();
+        BlocProvider.of<AppSyncCTGCubit>(context).fetchCTG(widget.dataset);
       }
     }
   }
@@ -169,4 +166,155 @@ class _AppSyncFileState extends State<AppSyncFileDetailView> {
       ),
     );
   }
+}
+
+
+class AppSyncSearchView  extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() {
+    return _AppSyncSearchState();
+  }
+}
+
+class _AppSyncSearchState extends State<AppSyncSearchView> {
+  final _scrollController = ScrollController();
+  final _dataSearch = DataSearch();
+  bool _amplifyConfigured = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      _onScroll();
+    });
+   _configureAmplify();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Search"),
+        actions: [
+          IconButton(onPressed: (){
+            showSearch(context: context, delegate: _dataSearch);
+          }, icon: Icon(Icons.search)),
+        ],
+      ),
+      drawer: Drawer(),
+      body: BlocBuilder<AppSyncCTGCubit, AppSyncCTGState>(builder: (context, state){
+        if (state.isFetchSuccess) {
+          return Column(children: [
+            Expanded(child:  ListView.builder(
+              controller: _scrollController,
+              itemCount: state.ctgs.length,
+              itemBuilder: (context, index){
+                return _buildCTGCard(state.ctgs[index]);
+              },
+            )
+            ),
+            Center(child: state.isFetchingMore ? CircularProgressIndicator() : Container(),)
+          ],);
+        } else if (state.isFetching){
+          return Center(child: CircularProgressIndicator(),);
+        } else {
+          return Center(child: Text("Search To Get Data"),);
+        }
+      },),
+    );
+  }
+
+  Card _buildCTGCard(CTGRecordModel ctg){
+    return Card(
+      child: ListTile(
+        leading: Icon(Icons.image, color: Colors.purple,),
+        title: Text("name: ${ctg.ctgUrl.split("/").last} at ${ctg.createdAt.split(":").first}"),
+        onTap: (){
+          Navigator.push(context, MaterialPageRoute(builder: (context) => AppSyncFileDetailView(
+            ctg: ctg,
+          )));;
+        },
+      ),
+    );
+  }
+
+  void _onScroll() {
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    print("$maxScroll and $currentScroll");
+    if (maxScroll == currentScroll) {
+      if (!BlocProvider.of<AppSyncCTGCubit>(context).state.isFetchingMore){
+        print("fetch more data");
+        BlocProvider.of<AppSyncCTGCubit>(context).fetchCTG(_dataSearch.query);
+      }
+    }
+  }
+
+  void _configureAmplify() async {
+    if(!mounted) return;
+    try {
+      Amplify.addPlugins([
+        AmplifyAuthCognito(), AmplifyStorageS3(), AmplifyAPI()
+      ]);
+      await Amplify.configure(amplifyconfig);
+      setState(() {
+        _amplifyConfigured = true;
+      });
+    } catch (e) {
+      print(e.toString());
+    }
+  }
+
+}
+
+
+class DataSearch extends SearchDelegate<String> {
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(onPressed: (){
+        query = "";
+        // Reset AppSyncCubit
+        BlocProvider.of<AppSyncCTGCubit>(context).reset();
+
+      }, icon: Icon(Icons.clear)),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(onPressed: (){
+      close(context, null);
+    }, icon: AnimatedIcon(
+      icon: AnimatedIcons.menu_arrow,
+      progress: transitionAnimation,
+    ),);
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return AppSyncListView(dataset: query,);
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    List<String> datasets = ["NUH", "STG", "SGH", "MONASH", "SYDNEY", "MANCHESTER", "EXTLONG", "SYNTHESIED", "NAMIC"];
+    List<String> suggestions = query.isEmpty ? datasets : datasets.where((element) => element.startsWith(query)).toList();
+    return ListView.builder(
+      itemCount: suggestions.length,
+      itemBuilder: (context, index){
+        return ListTile(
+          onTap: (){
+            BlocProvider.of<AppSyncCTGCubit>(context).reset();
+            query = suggestions[index];
+            BlocProvider.of<AppSyncCTGCubit>(context).fetchFirstTimeCTG(query);
+            showResults(context);
+          },
+          leading: Icon(Icons.image_aspect_ratio),
+          title: Text(suggestions[index]),
+        );
+      },
+    );
+  }
+
 }

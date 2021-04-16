@@ -42,8 +42,8 @@ void main() {
   // runApp(HistoricalCTGApp());
   // runApp(S3App());
   // runApp(S3PhotoViewApp());
-  // runApp(AppSyncApp());
-  runApp(AppSyncSearch());
+  runApp(AppSyncApp());
+  // runApp(AppSyncSearch());
 
 }
 

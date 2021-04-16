@@ -12,7 +12,7 @@ class AppSyncRepository {
   int maxNumQueryPerLoading = 10;
 
   String graphQLDocumentInit = '''query listCTGs {
-      listCTGs(limit : 100, nextToken: null) {
+      listCTGs(limit : 100, nextToken: null, filter: {ecgUrl: {contains: ""}}) {
         items {
           ctgUrl
           username
@@ -34,11 +34,44 @@ class AppSyncRepository {
       }
     }''';
 
-  Future<String> singleQuery(String nextToken) async {
+
+  Future<void> reset(){
+    this.records.clear();
+    this.isEndItem = false;
+    this.nextToken = null;
+    this.maxNumQueryPerLoading = 10;
+  }
+
+  Future<String> singleQuery(String dataset, String nextToken) async {
     String graphQLDocument = this.graphQLDocumentInit;
-    if (nextToken != null){
+    if ((nextToken == null) & (dataset != null) & (dataset != "")){
+      graphQLDocument = '''query listCTGs {
+        listCTGs(limit : 100, nextToken: null, filter: {ecgUrl: {contains: "$dataset"}}) {
+          items {
+            ctgUrl
+            username
+            fHR
+            mHR
+            decelsDuration
+            acelsDuration
+            acelsTime
+            decelsTime
+            ecgUrl
+            id
+            stv
+            userId
+            baseline
+            basvar
+            createdAt
+          },
+          nextToken
+        }
+      }''';
+    }
+
+    if ((nextToken != null) & (dataset != null) & (dataset != "")){
        graphQLDocument = '''query listCTGs {
-        listCTGs(limit : 100, nextToken: "$nextToken") {
+        listCTGs(limit : 100, nextToken: "$nextToken", filter: {ecgUrl: {contains: "$dataset"}}) {
           items {
             ctgUrl
             username
@@ -82,28 +115,30 @@ class AppSyncRepository {
   }
 
 
-  Future<List<CTGRecordModel>> fetchCTGs() async {
+  Future<List<CTGRecordModel>> fetchCTGs(String dataset) async {
     records = [];
     String nextToken;
-    nextToken = await singleQuery(null);
+    nextToken = await singleQuery(dataset, null);
     print(nextToken);
     // Next query
     for (var count = 0; count < this.maxNumQueryPerLoading; count++){
       if (nextToken == null){
         break;
       }
-      nextToken =  await singleQuery(nextToken);
+      nextToken =  await singleQuery(dataset, nextToken);
     }
     print(records.length);
     return records;
   }
 
-  Future<List<CTGRecordModel>> getCTGs() async {
+  Future<List<CTGRecordModel>> getCTGs(String dataset) async {
     if (isEndItem){
       print("reach end item in DB");
       return records;
     } else {
-      this.nextToken = await singleQuery(this.nextToken);
+
+
+      this.nextToken = await singleQuery(dataset, this.nextToken);
 
       if (this.nextToken == null) {
         isEndItem = true;
