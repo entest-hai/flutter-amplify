@@ -269,13 +269,14 @@ class _AppSyncSearchState extends State<AppSyncSearchView> {
 
 
 class DataSearch extends SearchDelegate<String> {
+  static bool blockQuery = false;
   @override
   List<Widget> buildActions(BuildContext context) {
     return [
       IconButton(onPressed: (){
         query = "";
         // Reset AppSyncCubit
-        BlocProvider.of<AppSyncCTGCubit>(context).reset();
+        // BlocProvider.of<AppSyncCTGCubit>(context).reset();
 
       }, icon: Icon(Icons.clear)),
     ];
@@ -293,21 +294,30 @@ class DataSearch extends SearchDelegate<String> {
 
   @override
   Widget buildResults(BuildContext context) {
-    BlocProvider.of<AppSyncCTGCubit>(context).reset();
-    BlocProvider.of<AppSyncCTGCubit>(context).fetchFirstTimeCTG(query);
-    BlocProvider.of<AppSyncCTGCubit>(context).fetchFirstTimeCTG(query.toLowerCase());
+    if (query != BlocProvider.of<AppSyncCTGCubit>(context).state.query){
+      blockQuery = false;
+    }
+
+    if (blockQuery){
+    } else {
+      BlocProvider.of<AppSyncCTGCubit>(context).reset();
+      BlocProvider.of<AppSyncCTGCubit>(context).fetchFirstTimeCTG(query);
+      blockQuery = true;
+    }
+
     return AppSyncListView(dataset: query,);
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    List<String> datasets = ["NUH", "STG", "SGH", "MONASH", "SYDNEY", "MANCHESTER", "EXTENDED-LONG", "SYNTHESIED", "NAMIC"];
+    List<String> datasets = ["NUH", "STG", "SGH", "monash", "SYDNEY", "MANCHESTER", "extended-long", "SYNTHESIED", "NAMIC"];
     List<String> suggestions = query.isEmpty ? datasets : datasets.where((element) => element.startsWith(query)).toList();
     return ListView.builder(
       itemCount: suggestions.length,
       itemBuilder: (context, index){
         return ListTile(
           onTap: (){
+            blockQuery = false;
             query = suggestions[index];
             showResults(context);
           },
