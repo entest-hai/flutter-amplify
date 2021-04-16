@@ -32,6 +32,8 @@ import 's3/s3_list_files_app.dart';
 import 's3/s3_image_view.dart';
 // AppSyncApp
 import 'appsync/appsync_app.dart';
+// AppSyncSearch
+import 'appsync/app_sync_search.dart';
 
 void main() {
   // runApp(MyApp());
@@ -40,7 +42,8 @@ void main() {
   // runApp(HistoricalCTGApp());
   // runApp(S3App());
   // runApp(S3PhotoViewApp());
-  runApp(AppSyncApp());
+  // runApp(AppSyncApp());
+  runApp(AppSyncSearch());
 
 }
 
