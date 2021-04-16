@@ -46,7 +46,7 @@ class AppSyncRepository {
     String graphQLDocument = this.graphQLDocumentInit;
     if ((nextToken == null) & (dataset != null) & (dataset != "")){
       graphQLDocument = '''query listCTGs {
-        listCTGs(limit : 50, nextToken: null, filter: {ecgUrl: {contains: "$dataset"}}) {
+        listCTGs(limit : 100, nextToken: null, filter: {ecgUrl: {contains: "$dataset"}}) {
           items {
             ctgUrl
             username
@@ -71,7 +71,7 @@ class AppSyncRepository {
 
     if ((nextToken != null) & (dataset != null) & (dataset != "")){
        graphQLDocument = '''query listCTGs {
-        listCTGs(limit : 50, nextToken: "$nextToken", filter: {ecgUrl: {contains: "$dataset"}}) {
+        listCTGs(limit : 100, nextToken: "$nextToken", filter: {ecgUrl: {contains: "$dataset"}}) {
           items {
             ctgUrl
             username
