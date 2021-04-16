@@ -18,6 +18,32 @@ class AppSyncCTGCubit extends Cubit<AppSyncCTGState> {
     }
   }
 
+  Future<void> fetchAllCTG(String dataset) async {
+    print("fetch all $dataset");
+    if ((dataset != null) & (dataset != ""))  {
+      emit(
+          AppSyncCTGState(
+            query: dataset,
+            isFetchingMore: false,
+            isFetching: true,
+            isFetchSuccess: false,
+            ctgs: this.appSyncRepository.records,
+          )
+      );
+      await this.appSyncRepository.fetchCTGs(dataset);
+      print("$dataset has ${this.appSyncRepository.records.length} records");
+      emit(
+          AppSyncCTGState(
+            query: dataset,
+            isFetchingMore: false,
+            isFetching: false,
+            isFetchSuccess: true,
+            ctgs: this.appSyncRepository.records,
+          )
+      );
+    }
+  }
+
   Future<void> fetchCTG(String dataset) async {
     if ((dataset != null) & (dataset != "")) {
       // first time fetch data

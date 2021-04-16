@@ -3,7 +3,6 @@ import 'package:amplify_api/amplify_api.dart';
 import 'dart:convert';
 import 'appsync_ctg_model.dart';
 
-
 class AppSyncRepository {
   List<CTGRecordModel> records;
   AppSyncRepository({this.records});
@@ -12,7 +11,7 @@ class AppSyncRepository {
   int maxNumQueryPerLoading = 10;
 
   String graphQLDocumentInit = '''query listCTGs {
-      listCTGs(limit : 100, nextToken: null, filter: {ecgUrl: {contains: ""}}) {
+      listCTGs(limit : 50, nextToken: null, filter: {ecgUrl: {contains: ""}}) {
         items {
           ctgUrl
           username
@@ -46,7 +45,7 @@ class AppSyncRepository {
     String graphQLDocument = this.graphQLDocumentInit;
     if ((nextToken == null) & (dataset != null) & (dataset != "")){
       graphQLDocument = '''query listCTGs {
-        listCTGs(limit : 100, nextToken: null, filter: {ecgUrl: {contains: "$dataset"}}) {
+        listCTGs(limit : 50, nextToken: null, filter: {ecgUrl: {contains: "$dataset"}}) {
           items {
             ctgUrl
             username
@@ -71,7 +70,7 @@ class AppSyncRepository {
 
     if ((nextToken != null) & (dataset != null) & (dataset != "")){
        graphQLDocument = '''query listCTGs {
-        listCTGs(limit : 100, nextToken: "$nextToken", filter: {ecgUrl: {contains: "$dataset"}}) {
+        listCTGs(limit : 50, nextToken: "$nextToken", filter: {ecgUrl: {contains: "$dataset"}}) {
           items {
             ctgUrl
             username
@@ -119,15 +118,12 @@ class AppSyncRepository {
     records = [];
     String nextToken;
     nextToken = await singleQuery(dataset, null);
-    print(nextToken);
-    // Next query
     for (var count = 0; count < this.maxNumQueryPerLoading; count++){
       if (nextToken == null){
         break;
       }
       nextToken =  await singleQuery(dataset, nextToken);
     }
-    print(records.length);
     return records;
   }
 
@@ -136,7 +132,6 @@ class AppSyncRepository {
       print("reach end item in DB");
       return records;
     } else {
-
 
       this.nextToken = await singleQuery(dataset, this.nextToken);
 

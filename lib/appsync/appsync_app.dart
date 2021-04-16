@@ -301,7 +301,7 @@ class DataSearch extends SearchDelegate<String> {
     if (blockQuery){
     } else {
       BlocProvider.of<AppSyncCTGCubit>(context).reset();
-      BlocProvider.of<AppSyncCTGCubit>(context).fetchFirstTimeCTG(query);
+      BlocProvider.of<AppSyncCTGCubit>(context).fetchAllCTG(query);
       blockQuery = true;
     }
 
