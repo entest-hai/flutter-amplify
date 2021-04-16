@@ -293,21 +293,22 @@ class DataSearch extends SearchDelegate<String> {
 
   @override
   Widget buildResults(BuildContext context) {
+    BlocProvider.of<AppSyncCTGCubit>(context).reset();
+    BlocProvider.of<AppSyncCTGCubit>(context).fetchFirstTimeCTG(query);
+    BlocProvider.of<AppSyncCTGCubit>(context).fetchFirstTimeCTG(query.toLowerCase());
     return AppSyncListView(dataset: query,);
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    List<String> datasets = ["NUH", "STG", "SGH", "MONASH", "SYDNEY", "MANCHESTER", "EXTLONG", "SYNTHESIED", "NAMIC"];
+    List<String> datasets = ["NUH", "STG", "SGH", "MONASH", "SYDNEY", "MANCHESTER", "EXTENDED-LONG", "SYNTHESIED", "NAMIC"];
     List<String> suggestions = query.isEmpty ? datasets : datasets.where((element) => element.startsWith(query)).toList();
     return ListView.builder(
       itemCount: suggestions.length,
       itemBuilder: (context, index){
         return ListTile(
           onTap: (){
-            BlocProvider.of<AppSyncCTGCubit>(context).reset();
             query = suggestions[index];
-            BlocProvider.of<AppSyncCTGCubit>(context).fetchFirstTimeCTG(query);
             showResults(context);
           },
           leading: Icon(Icons.image_aspect_ratio),
