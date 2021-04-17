@@ -146,11 +146,11 @@ class AppSyncFileDetailView extends StatefulWidget {
 }
 
 class _AppSyncFileState extends State<AppSyncFileDetailView> {
-
   @override
   void initState() {
     super.initState();
-    BlocProvider.of<AppSyncItemCubit>(context).fetchCtgUrl(widget.ctg);
+    // BlocProvider.of<AppSyncItemCubit>(context).fetchCtgUrl(widget.ctg);
+    BlocProvider.of<AppSyncItemCubit>(context).downloadCtg(widget.ctg);
   }
 
   @override
@@ -159,9 +159,16 @@ class _AppSyncFileState extends State<AppSyncFileDetailView> {
       appBar: AppBar(title: Text("Detail"),),
       body: SafeArea(
         child: BlocBuilder<AppSyncItemCubit, AppSyncItemState>(builder: (context, state){
-          return Center(
-            child: state.ctgUrl != null ?  PhotoView(imageProvider: NetworkImage(state.ctgUrl),) : CircularProgressIndicator(),
-          );
+          if (state is AppSyncItemDownloading) {
+            return Center(child:  CircularProgressIndicator(),);
+          } else if (state is AppSyncItemDownloadedSuccess) {
+            return Center(
+              child: PhotoView(
+                imageProvider: FileImage(state.localCtgPath),
+              ),
+              // child: state.ctgUrl != null ?  PhotoView(imageProvider: NetworkImage(state.ctgUrl),) : CircularProgressIndicator(),
+            );
+          };
         },),
       ),
     );
@@ -180,7 +187,6 @@ class _AppSyncSearchState extends State<AppSyncSearchView> {
   final _scrollController = ScrollController();
   final _dataSearch = DataSearch();
   bool _amplifyConfigured = false;
-
   @override
   void initState() {
     super.initState();
