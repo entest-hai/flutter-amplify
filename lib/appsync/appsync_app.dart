@@ -100,7 +100,7 @@ class _AppSyncState extends State<AppSyncListView> {
     return Card(
       child: ListTile(
         leading: Icon(Icons.image, color: Colors.purple,),
-        title: Text("name: ${ctg.ctgUrl.split("/").last} at ${ctg.createdAt.split(":").first}"),
+        title: Text("name: ${ctg.ctgUrl.split("/").last} "),
         onTap: (){
           Navigator.push(context, MaterialPageRoute(builder: (context) => AppSyncFileDetailView(
             ctg: ctg,
@@ -234,7 +234,7 @@ class _AppSyncSearchState extends State<AppSyncSearchView> {
     return Card(
       child: ListTile(
         leading: Icon(Icons.image, color: Colors.purple,),
-        title: Text("name: ${ctg.ctgUrl.split("/").last} at ${ctg.createdAt.split(":").first}"),
+        title: Text("name: ${ctg.ctgUrl.split("/").last}"),
         onTap: (){
           Navigator.push(context, MaterialPageRoute(builder: (context) => AppSyncFileDetailView(
             ctg: ctg,
@@ -316,7 +316,7 @@ class DataSearch extends SearchDelegate<String> {
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    List<String> datasets = ["NUH", "STG", "SGH", "monash", "SYDNEY", "MANCHESTER", "extended-long", "SYNTHESIED", "NAMIC"];
+    List<String> datasets = ["nuh", "stg", "sgh", "monash", "SYDNEY", "MANCHESTER", "extended-long", "SYNTHESIED", "NAMIC"];
     List<String> suggestions = query.isEmpty ? datasets : datasets.where((element) => element.startsWith(query)).toList();
     return ListView.builder(
       itemCount: suggestions.length,

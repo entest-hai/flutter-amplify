@@ -10,24 +10,15 @@ class AppSyncRepository {
   String nextToken;
   int maxNumQueryPerLoading = 10;
 
-  String graphQLDocumentInit = '''query listCTGs {
-      listCTGs(limit : 50, nextToken: null, filter: {ecgUrl: {contains: ""}}) {
+  String graphQLDocumentInit = '''query CTGImagesByDataset {
+      CTGImagesByDataset(dataset: "nuh",  limit : 50, nextToken: null) {
         items {
+          ecgUrl  
           ctgUrl
-          username
-          fHR
-          mHR
-          decelsDuration
-          acelsDuration
-          acelsTime
-          decelsTime
-          ecgUrl
-          id
-          stv
+          dataset
           userId
-          baseline
-          basvar
-          createdAt
+          username
+          createdTime
         },
         nextToken
       }
@@ -44,24 +35,15 @@ class AppSyncRepository {
   Future<String> singleQuery(String dataset, String nextToken) async {
     String graphQLDocument = this.graphQLDocumentInit;
     if ((nextToken == null) & (dataset != null) & (dataset != "")){
-      graphQLDocument = '''query listCTGs {
-        listCTGs(limit : 50, nextToken: null, filter: {ecgUrl: {contains: "$dataset"}}) {
+      graphQLDocument = '''query CTGImagesByDataset {
+        CTGImagesByDataset(dataset: "$dataset",limit : 50, nextToken: null) {
           items {
+            ecgUrl  
             ctgUrl
-            username
-            fHR
-            mHR
-            decelsDuration
-            acelsDuration
-            acelsTime
-            decelsTime
-            ecgUrl
-            id
-            stv
+            dataset
             userId
-            baseline
-            basvar
-            createdAt
+            username
+            createdTime
           },
           nextToken
         }
@@ -69,24 +51,15 @@ class AppSyncRepository {
     }
 
     if ((nextToken != null) & (dataset != null) & (dataset != "")){
-       graphQLDocument = '''query listCTGs {
-        listCTGs(limit : 50, nextToken: "$nextToken", filter: {ecgUrl: {contains: "$dataset"}}) {
+       graphQLDocument = '''query CTGImagesByDataset {
+        CTGImagesByDataset(dataset: "$dataset", limit : 50, nextToken: "$nextToken") {
           items {
+            ecgUrl  
             ctgUrl
-            username
-            fHR
-            mHR
-            decelsDuration
-            acelsDuration
-            acelsTime
-            decelsTime
-            ecgUrl
-            id
-            stv
+            dataset
             userId
-            baseline
-            basvar
-            createdAt
+            username
+            createdTime
           },
           nextToken
         }
@@ -98,7 +71,7 @@ class AppSyncRepository {
             document: graphQLDocument,
           ));
       var response = await operation.response;
-      var json = jsonDecode(response.data.toString())['listCTGs'];
+      var json = jsonDecode(response.data.toString())['CTGImagesByDataset'];
       var items = json['items'];
       nextToken = json['nextToken'];
       for (var item in items) {
