@@ -66,7 +66,7 @@ class _AppSyncState extends State<AppSyncListView> {
   void initState() {
     super.initState();
     _scrollController.addListener(() {
-      _onScroll();
+      // _onScroll();
     });
     // _configureAmplify();
   }
@@ -191,7 +191,7 @@ class _AppSyncSearchState extends State<AppSyncSearchView> {
   void initState() {
     super.initState();
     _scrollController.addListener(() {
-      _onScroll();
+      // _onScroll();
     });
    _configureAmplify();
   }

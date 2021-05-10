@@ -21,7 +21,7 @@ import 'ctg_view.dart';
 import 'ctg_realtime_cubit.dart';
 import 'ctg_realtime_view.dart';
 // Login
-import 'loginapp.dart';
+import 'auth/loginapp.dart';
 // Annotation
 import 'annotation_app.dart';
 // Historical CTG
@@ -37,12 +37,12 @@ import 'appsync/app_sync_search.dart';
 
 void main() {
   // runApp(MyApp());
-  // runApp(LoginApp());
+  runApp(LoginApp());
   // runApp(AnnotationApp());
   // runApp(HistoricalCTGApp());
   // runApp(S3App());
   // runApp(S3PhotoViewApp());
-  runApp(AppSyncApp());
+  // runApp(AppSyncApp());
   // runApp(AppSyncSearch());
 
 }
