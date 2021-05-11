@@ -44,7 +44,9 @@ import 'package:flutter_amplify/auth/auth_navigator.dart';
 import 'package:flutter_amplify/auth/session_view.dart';
 import 'package:flutter_amplify/auth/auth_repository.dart';
 import 'package:flutter_amplify/auth/data_repository.dart';
-import 'package:flutter_amplify/auth/models/user_model.dart';
+// Profile 
+import 'package:flutter_amplify/profile/profile_view.dart';
+import 'package:flutter_amplify/profile/profile_bloc.dart';
 // 
 
 void main() {
@@ -140,9 +142,14 @@ class AppNavigator extends StatelessWidget {
           // Show session flow
           if (state is Authenticated)
             MaterialPage(
-                child: CTGAppSessionView(user: state.user,)
-                // child: SessionView(user: state.user,)
+                child: MultiBlocProvider(
+                  providers: [
+                     BlocProvider(create: (context) => ProfileBloc(user: state.user, isCurrentUser: false)),
+                  ],
+                  child: CTGAppSessionView(user: state.user,),
+                  // child: SessionView(user: state.user,)
                 // child: AppSyncNav()
+                  )
                 )
         ],
         onPopPage: (route, result) => route.didPop(result),
@@ -172,7 +179,7 @@ class _CTGAppTabState extends State<CTGAppSessionView> {
     _tabs = [
       SessionView(user: widget.user),
       AppSyncNav(),
-      Center(child: Text("Setting View"),),
+      UserProfileView(),
   ];
   }
 
@@ -181,14 +188,14 @@ class _CTGAppTabState extends State<CTGAppSessionView> {
     return Scaffold(
       body: _tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
+        // type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.login),
             label: "Login",
-            backgroundColor: Colors.blue
+            backgroundColor: Colors.blue,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.search),
