@@ -19,7 +19,6 @@ class AuthRepository {
   Future<String> attemptAutoLogin() async {
     try {
       final session = await Amplify.Auth.fetchAuthSession();
-
       return session.isSignedIn ? (await _getUserIdFromAttributes()) : null;
     } catch (e) {
       throw e;

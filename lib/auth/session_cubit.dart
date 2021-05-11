@@ -21,6 +21,8 @@ class SessionCubit extends Cubit<SessionState> {
     try {
       final userId = await authRepo.attemptAutoLogin();
 
+      print("Attemp auto login $userId");
+
       if (userId == null) {
         throw Exception("User not logged in");
       }

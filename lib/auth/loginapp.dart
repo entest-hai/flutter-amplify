@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'loading_view.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
@@ -13,9 +12,7 @@ import 'data_repository.dart';
 import 'session_cubit.dart';
 import 'session_state.dart';
 import 'session_view.dart';
-import 'confirm/confirmation_view.dart';
-import 'login/login_view.dart';
-import 'signup/signup_view.dart';
+import 'auth_navigator.dart';
 
 class LoginApp extends StatefulWidget {
   @override
@@ -96,35 +93,6 @@ class AppNavigator extends StatelessWidget {
                 child: SessionView(
               user: state.user,
             ))
-        ],
-        onPopPage: (route, result) => route.didPop(result),
-      );
-    });
-  }
-}
-
-
-
-// AuthNavigator View
-class AuthNavigator extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<AuthCubit, AuthState>(builder: (context, state) {
-      return Navigator(
-        pages: [
-          // Show login
-          if (state == AuthState.login) MaterialPage(child: LoginView()),
-
-          // Allow push animation
-          if (state == AuthState.signUp ||
-              state == AuthState.confirmSignUp) ...[
-            //Show sign up
-            MaterialPage(child: SignUpView()),
-
-            // Show confirm sign up
-            if (state == AuthState.confirmSignUp)
-              MaterialPage(child: ConfirmationView()),
-          ]
         ],
         onPopPage: (route, result) => route.didPop(result),
       );

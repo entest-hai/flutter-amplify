@@ -25,20 +25,22 @@ class SessionView extends StatelessWidget {
         title: Text("User: ${user.username}"),
       ),
       body: SafeArea(
-          child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          MultiBlocProvider(
-            providers: [
-              BlocProvider(
-                  create: (context) => UserCTGCubit(
-                      userCTGRepo: context.read<UserCTGRepository>())
-                    ..fetchUserCTG(user.id))
-            ],
-            child: UserHistoricalView(),
-          )
-        ],
-      )),
+        child: Center(child: Text("Session ${user.username}"),),
+      //     child: Stack(
+      //   alignment: Alignment.bottomCenter,
+      //   children: [
+      //     MultiBlocProvider(
+      //       providers: [
+      //         BlocProvider(
+      //             create: (context) => UserCTGCubit(
+      //                 userCTGRepo: context.read<UserCTGRepository>())
+      //               ..fetchUserCTG(user.id))
+      //       ],
+      //       child: UserHistoricalView(),
+      //     )
+      //   ],
+      // )
+      ),
     );
   }
 }

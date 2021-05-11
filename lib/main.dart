@@ -4,6 +4,7 @@ import 'package:amplify_flutter/amplify.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 import 'package:amplify_api/amplify_api.dart';
+import 'package:flutter_amplify/auth/models/user_model.dart';
 // Generated in previous step
 import 'amplifyconfiguration.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,8 +21,6 @@ import 'ctg_view.dart';
 // CTG Each Minute App
 import 'ctg_realtime_cubit.dart';
 import 'ctg_realtime_view.dart';
-// Login
-import 'auth/loginapp.dart';
 // Annotation
 import 'annotation_app.dart';
 // Historical CTG
@@ -31,13 +30,26 @@ import 's3/s3_list_files_app.dart';
 // S3 image view app
 import 's3/s3_image_view.dart';
 // AppSyncApp
+import 'package:flutter_amplify/appsync/appsync_cubit.dart';
+import 'package:flutter_amplify/appsync/appsync_item_cubit.dart';
 import 'appsync/appsync_app.dart';
 // AppSyncSearch
 import 'appsync/app_sync_search.dart';
+// Auth 
+import 'package:flutter_amplify/auth/auth_cubit.dart';
+import 'package:flutter_amplify/auth/session_cubit.dart';
+import 'package:flutter_amplify/auth/session_state.dart';
+import 'package:flutter_amplify/auth/loading_view.dart';
+import 'package:flutter_amplify/auth/auth_navigator.dart';
+import 'package:flutter_amplify/auth/session_view.dart';
+import 'package:flutter_amplify/auth/auth_repository.dart';
+import 'package:flutter_amplify/auth/data_repository.dart';
+import 'package:flutter_amplify/auth/models/user_model.dart';
+// 
 
 void main() {
   // runApp(MyApp());
-  runApp(LoginApp());
+  runApp(CTGApp());
   // runApp(AnnotationApp());
   // runApp(HistoricalCTGApp());
   // runApp(S3App());
@@ -47,17 +59,18 @@ void main() {
 
 }
 
-
-class MyApp extends StatefulWidget {
+class CTGApp extends StatefulWidget {
   @override
-  State<StatefulWidget> createState() => _MyAppState();
+  State<StatefulWidget> createState() {
+    return _CTGAppState();
+  }
 }
 
-class _MyAppState extends State<MyApp> {
-  bool _amplifyConfigured = false;
+class _CTGAppState extends State<CTGApp> {
+  bool _isAmplifyConfigured = false;
 
   @override
-  initState() {
+  void initState() {
     super.initState();
     _configureAmplify();
   }
@@ -65,97 +78,136 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        home: MultiBlocProvider(providers: [
-      BlocProvider(create: (context) => UploadCubit()..listFiles()),
-      BlocProvider(
-        create: (context) => CTGCubit(),
-      ),
-      BlocProvider(
-        create: (context) => HeartRateCubit()..loadHeartRateFromFile(),
-      ),
-      BlocProvider(create: (context) => S3Cubit()..listCsvFiles()),
-      BlocProvider(create: (context) => TodoCubit()..subscribeTodo()),
-      BlocProvider(create: (context) => BeatCubit()..fetchBeat()),
-    ], child: _amplifyConfigured ? CTGNavTab() : CTGNavTab()));
+        home: _isAmplifyConfigured
+            ? MultiRepositoryProvider(
+                providers: [
+                    RepositoryProvider(create: (context) => AuthRepository()),
+                    RepositoryProvider(create: (context) => DataRepository()),
+                  ],
+                child: MultiBlocProvider(
+                  providers: [
+                    BlocProvider(create: (context) => AppSyncCTGCubit()),
+                    BlocProvider(create: (context) => AppSyncItemCubit()),
+                    BlocProvider(
+                        create: (context) => SessionCubit(
+                            authRepo: context.read<AuthRepository>(),
+                            dataPepo: context.read<DataRepository>()
+                            )
+                            ),
+                  ],
+                  child: AppNavigator(),
+                )
+                )
+            : LoadingView()
+            );
   }
 
-  void _configureAmplify() async {
-    if (!mounted) return;
+  // Configure Amplify
+  Future<void> _configureAmplify() async {
     try {
-      Amplify.addPlugins(
-          [AmplifyAuthCognito(), AmplifyStorageS3(), AmplifyAPI()]);
+      await Amplify.addPlugins([
+        AmplifyAuthCognito(),
+        AmplifyAPI(),
+        AmplifyStorageS3()
+      ]);
       await Amplify.configure(amplifyconfig);
-      setState(() {
-        _amplifyConfigured = true;
-      });
+      setState(() => _isAmplifyConfigured = true);
+      print("Amplify has been configured");
     } catch (e) {
-      print(e.toString());
+      print(e);
     }
   }
 }
 
-class CTGNavTab extends StatefulWidget {
+class AppNavigator extends StatelessWidget {
   @override
-  State<StatefulWidget> createState() {
-    return _CTGNavTabState();
+  Widget build(BuildContext context) {
+    return BlocBuilder<SessionCubit, SessionState>(builder: (context, state) {
+      return Navigator(
+        pages: [
+          // Show loading screen
+          if (state is UnknownSessionState) MaterialPage(child: LoadingView()),
+
+          // Show auth flow
+          if (state is Unauthenticated)
+            MaterialPage(
+                child: BlocProvider(
+              create: (context) =>
+                  AuthCubit(sessionCubit: context.read<SessionCubit>()),
+              child: AuthNavigator(),
+            )),
+
+          // Show session flow
+          if (state is Authenticated)
+            MaterialPage(
+                child: CTGAppSessionView(user: state.user,)
+                // child: SessionView(user: state.user,)
+                // child: AppSyncNav()
+                )
+        ],
+        onPopPage: (route, result) => route.didPop(result),
+      );
+    });
   }
 }
 
-class _CTGNavTabState extends State<CTGNavTab> {
-  int _currentIndex = 0;
-  final tabs = [
-    Center(
-      child: SQIAppView(),
-    ),
-    Center(
-      child: CTGAppOnly(),
-    ),
-    TodoDBView(),
-    Center(
-      child: BeatView(),
-    ),
+
+class CTGAppSessionView extends StatefulWidget {
+  final User user;
+  CTGAppSessionView({this.user}); 
+  @override
+  State<StatefulWidget> createState() {
+    return _CTGAppTabState();
+  }
+}
+
+
+class _CTGAppTabState extends State<CTGAppSessionView> {
+  var _currentIndex = 0;
+  var _tabs = []; 
+  
+  @override
+  void initState() {
+    super.initState();
+    _tabs = [
+      SessionView(user: widget.user),
+      AppSyncNav(),
+      Center(child: Text("Setting View"),),
   ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Navigator(
-      pages: [
-        MaterialPage(
-            child: Scaffold(
-          appBar: AppBar(title: Text("Amplify")),
-          bottomNavigationBar: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            currentIndex: _currentIndex,
-            items: [
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.home),
-                  label: "SQI",
-                  backgroundColor: Colors.blue),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.camera),
-                  label: "CTG",
-                  backgroundColor: Colors.blue),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.data_usage),
-                  label: "DB",
-                  backgroundColor: Colors.blue),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.settings),
-                  label: "Setting",
-                  backgroundColor: Colors.blue)
-            ],
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
+    return Scaffold(
+      body: _tabs[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _currentIndex,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.login),
+            label: "Login",
+            backgroundColor: Colors.blue
           ),
-          body: tabs[_currentIndex],
-        ))
-      ],
-      onPopPage: (route, result) {
-        return route.didPop(result);
-      },
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: "Search",
+            backgroundColor: Colors.blue,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: "Setting",
+            backgroundColor: Colors.blue
+          )
+        ],
+        onTap: (index){
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+      ),
     );
   }
 }
+
