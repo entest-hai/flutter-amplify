@@ -11,6 +11,12 @@ class SessionCubit extends Cubit<SessionState> {
   final AuthRepository authRepo;
   final DataRepository dataPepo;
 
+  User get currentUser => (state as Authenticated).user;
+  User get selectedUser => (state as Authenticated).selectedUser;
+  bool get isCurrentUserSelected =>
+      selectedUser == null || currentUser.id == selectedUser.id;
+
+
   SessionCubit({this.authRepo, this.dataPepo}) : super(UnknownSessionState()) {
     attemptAutoLogin();
   }
@@ -20,9 +26,7 @@ class SessionCubit extends Cubit<SessionState> {
 
     try {
       final userId = await authRepo.attemptAutoLogin();
-
       print("Attemp auto login $userId");
-
       if (userId == null) {
         throw Exception("User not logged in");
       }
@@ -42,7 +46,6 @@ class SessionCubit extends Cubit<SessionState> {
   }
 
   void showAuth() => emit(Unauthenticated());
-
   void showSession(AuthCredentials credentials) async {
     try {
       User user = await dataPepo.getUserById(credentials.userId);

@@ -5,6 +5,7 @@ import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter_amplify/auth/models/user_model.dart';
+import 'package:flutter_amplify/profile/storage_repository.dart';
 // Generated in previous step
 import 'amplifyconfiguration.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -85,6 +86,7 @@ class _CTGAppState extends State<CTGApp> {
                 providers: [
                     RepositoryProvider(create: (context) => AuthRepository()),
                     RepositoryProvider(create: (context) => DataRepository()),
+                    RepositoryProvider(create: (context) => StorageRepository())
                   ],
                 child: MultiBlocProvider(
                   providers: [
@@ -144,7 +146,11 @@ class AppNavigator extends StatelessWidget {
             MaterialPage(
                 child: MultiBlocProvider(
                   providers: [
-                     BlocProvider(create: (context) => ProfileBloc(user: state.user, isCurrentUser: false)),
+                     BlocProvider(create: (context) => ProfileBloc(
+                       dataRepo: context.read<DataRepository>(),
+                       storageRepo: context.read<StorageRepository>(),
+                       user: state.user,
+                       isCurrentUser: false)),
                   ],
                   child: CTGAppSessionView(user: state.user,),
                   // child: SessionView(user: state.user,)

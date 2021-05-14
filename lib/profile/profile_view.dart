@@ -1,26 +1,25 @@
 import 'dart:io';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_amplify/auth/session_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'profile_state.dart';
 import 'profile_event.dart';
 import 'profile_bloc.dart';
 import 'package:flutter_amplify/auth/models/user_model.dart';
-
+import 'storage_repository.dart';
+import 'package:flutter_amplify/auth/data_repository.dart';
 
 class UserProfileView extends StatelessWidget {
-  final User user = User(
-    username: "Hai",
-    password: "Hai@865525",
-    email: "htranminhhai20@gmail.com",
-    description: "something about me");
-  final bool isCurrentUser = true;
-
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(create: (context) => ProfileBloc(user: user, isCurrentUser: isCurrentUser),
+    final sessionCubit = context.read<SessionCubit>();
+    return BlocProvider(create: (context) => ProfileBloc(
+        dataRepo: context.read<DataRepository>(),
+        storageRepo: context.read<StorageRepository>(),
+        user: sessionCubit.selectedUser ?? sessionCubit.currentUser,
+        isCurrentUser: true),
     child: BlocListener<ProfileBloc, ProfileState>(
       listener: (context, state){
         if (state.imageSourceActionSheetIsVisible) {
@@ -67,10 +66,11 @@ class UserProfileView extends StatelessWidget {
 
   Widget _avatar(){
     return BlocBuilder<ProfileBloc, ProfileState>(builder: (context,state){
-     return  CircleAvatar(
+     return  state.avatarPath == null ? Icon(Icons.person, size: 50) : CircleAvatar(
       radius: 50,
       child: Icon(Icons.person),
       // backgroundImage: FileImage(File(state.avatarPath)),
+      backgroundImage: NetworkImage(state.avatarPath),
     );
     });
   }
