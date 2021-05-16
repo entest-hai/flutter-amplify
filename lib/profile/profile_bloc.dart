@@ -7,6 +7,7 @@ import 'profile_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'storage_repository.dart';
 import 'package:flutter_amplify/auth/data_repository.dart';
+import 'image_url_cache.dart';
 
 
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
@@ -20,9 +21,14 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     @required User user,
     @required bool isCurrentUser
     }) : super(ProfileState(user: user, isCurrentUser: isCurrentUser)) {
-       storageRepo
-        .getUrlForFile(user.avatarkey)
+
+      ImageUrlCache.instance
+        .getUrl(user.avatarkey)
         .then((url) => add(ProvideImagePath(avatarPath: url)));
+        
+      //  storageRepo
+      //   .getUrlForFile(user.avatarkey)
+      //   .then((url) => add(ProvideImagePath(avatarPath: url)));
     }
 
   @override

@@ -57,19 +57,23 @@ class SessionCubit extends Cubit<SessionState> {
         );
       }
 
+      print('show session avatar ${user.avatarkey} ${user.email} ${user.description}');
+
       emit(Authenticated(user: user));
     } catch (e) {
       emit(Unauthenticated());
     }
 
     // final user = dataRepo.getUser(credentials.userId);
-    emit(Authenticated(
-        user: User(
-            id: credentials.userId,
-            username: credentials.username,
-            email: credentials.email,
-            avatarkey: '',
-            description: '')));
+    // emit(Authenticated(
+    //     user: User(
+    //         id: credentials.userId,
+    //         username: credentials.username,
+    //         email: credentials.email,
+    //         avatarkey: '',
+    //         description: '')
+    //         )
+    //         );
   }
 
   void signOut() {

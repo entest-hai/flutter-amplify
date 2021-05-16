@@ -7,7 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'profile_state.dart';
 import 'profile_event.dart';
 import 'profile_bloc.dart';
-import 'package:flutter_amplify/auth/models/user_model.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'storage_repository.dart';
 import 'package:flutter_amplify/auth/data_repository.dart';
 
